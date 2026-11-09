@@ -19,6 +19,7 @@ class FootprintsIntegrationTest(unittest.TestCase):
                 page = client.get("/footprints/")
                 self.assertEqual(page.status_code, 200)
                 self.assertIn('id="passport-form"', page.text)
+                self.assertEqual(page.headers["x-frame-options"], "DENY")
                 for script in ("discovery.js", "passport.js"):
                     self.assertEqual(client.get(f"/footprints/{script}").status_code, 200)
                 self.assertEqual(client.get("/footprints/serve.py").status_code, 404)
@@ -34,7 +35,9 @@ class FootprintsIntegrationTest(unittest.TestCase):
                     "artifact_hash": artifact_hash,
                     "artifact_files": ["model.safetensors"],
                 }
-                created = client.post("/models", json=payload)
+                created = client.post(
+                    "/models", json=payload, headers={"Origin": "http://127.0.0.1"}
+                )
                 self.assertEqual(created.status_code, 201, created.text)
                 passport_id = created.json()["id"]
                 stored_path = registry_root / "models" / f"{passport_id}.json"
@@ -52,3 +55,22 @@ class FootprintsIntegrationTest(unittest.TestCase):
                 rejected = client.post(verify_path)
                 self.assertEqual(rejected.status_code, 409, rejected.text)
                 self.assertEqual(rejected.json()["error"]["code"], "id_mismatch")
+
+    def test_local_app_rejects_unsafe_core_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            registry_root = Path(directory)
+            with TestClient(
+                create_footprints_app(registry_root), base_url="http://127.0.0.1"
+            ) as client:
+                self.assertEqual(client.post("/agents", json={}).status_code, 404)
+                self.assertEqual(client.post("/sync/passports", json={}).status_code, 404)
+                self.assertEqual(client.get("/export").status_code, 404)
+                self.assertEqual(client.get("/passports/not-a-passport-id").status_code, 404)
+                self.assertEqual(client.post("/models", json={"id": "../other"}).status_code, 422)
+                self.assertEqual(client.post("/models", content="{}").status_code, 415)
+                external = client.post(
+                    "/models", json={}, headers={"Origin": "https://external.example"}
+                )
+                self.assertEqual(external.status_code, 403)
+                self.assertEqual(list((registry_root / "models").iterdir()), [])
+                self.assertFalse((registry_root / "other.json").exists())

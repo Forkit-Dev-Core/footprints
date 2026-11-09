@@ -13,9 +13,13 @@ async function coreRequest(path, body) {
     options.body = JSON.stringify(body);
   }
   const response = await fetch(path, options);
-  const payload = await response.json();
+  const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.error?.message || `Core returned HTTP ${response.status}.`);
+    const detail = typeof payload?.detail === 'string' ? payload.detail : null;
+    throw new Error(payload?.error?.message || detail || `Core returned HTTP ${response.status}.`);
+  }
+  if (!payload) {
+    throw new Error('Core returned an unreadable response.');
   }
   return payload;
 }

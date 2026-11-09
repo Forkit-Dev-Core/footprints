@@ -8,3 +8,7 @@
 Maintainers use Issues to track actionable work, help contributors scope changes, and merge after review and passing checks. For changes to discovery behavior, reviewers look for a representative match and a near match that should be ignored.
 
 Be respectful and constructive in discussions and reviews. If someone posts private information, flag it for maintainers without quoting it.
+
+## Contribution license
+
+By submitting a contribution, you agree to license it under the project's [MIT License](LICENSE). Submit only material you have the right to share under those terms.
