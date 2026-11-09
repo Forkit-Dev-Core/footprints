@@ -7,17 +7,73 @@
   body { margin: 3rem auto; max-width: 50rem; padding: 0 1rem; font: 1rem/1.6 system-ui; color: #172338; background: #f7f9fc; }
   h1 { margin-bottom: .2rem; line-height: 1.2; }
   .label { display: inline-block; padding: .2rem .65rem; color: #163c61; background: #deedf9; border-radius: .25rem; font-weight: 650; }
+  section { margin: 2rem 0; }
+  fieldset { display: grid; gap: .8rem; border: 0; padding: 0; margin: 0; }
+  label { display: grid; gap: .25rem; font-weight: 600; }
+  input, select, button { font: inherit; }
+  input, select { padding: .4rem; }
+  button { width: fit-content; padding: .45rem .85rem; }
+  dd { margin: 0 0 .5rem; overflow-wrap: anywhere; }
   ul { padding: 0; list-style: none; }
   li { margin: .65rem 0; padding: .7rem 1rem; background: white; border: 1px solid #d4deea; border-radius: .4rem; }
   strong { display: block; }
 </style>
 <script src="discovery.js" defer></script>
+<script src="passport.js" defer></script>
 <main>
   <h1>Footprints Discovery</h1>
-  <p class="label">Simulated sample</p>
-  <p>Explore how sample signals identify AI tools, runtimes, and models. This demo uses fictional data and does not inspect your device.</p>
-  <h2 id="summary">Discovery results</h2>
-  <ul id="findings" aria-labelledby="summary"></ul>
-  <noscript>Enable JavaScript to display the discovery results.</noscript>
+  <section aria-labelledby="passport-heading">
+    <h2 id="passport-heading">Create a model passport</h2>
+    <p id="local-service-note">Start the local app with <code>python serve.py</code> to create and verify passports with Forkit Core.</p>
+    <form id="passport-form" hidden>
+      <p>Choose a model file and review its metadata. Footprints hashes the file in your browser and sends the hash and metadata to Forkit Core on this device.</p>
+      <fieldset>
+        <label>Model artifact <input type="file" name="artifact" aria-describedby="artifact-limit" required></label>
+        <small id="artifact-limit">Choose one nonempty file up to 64 MiB.</small>
+        <label>Model name <input name="name" required></label>
+        <label>Version <input name="version" value="1.0.0" pattern="[0-9]+\.[0-9]+(\.[0-9]+)?" title="Enter a version such as 1.0 or 1.0.0" required></label>
+        <label>Creator <input name="creator" required></label>
+        <label>Task
+          <select name="task_type" required>
+            <option value="">Choose a task</option>
+            <option value="text-generation">Text generation</option>
+            <option value="text-classification">Text classification</option>
+            <option value="embedding">Embedding</option>
+            <option value="image-generation">Image generation</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label>Architecture
+          <select name="architecture" required>
+            <option value="">Choose an architecture</option>
+            <option value="transformer">Transformer</option>
+            <option value="encoder-only">Encoder only</option>
+            <option value="decoder-only">Decoder only</option>
+            <option value="encoder-decoder">Encoder–decoder</option>
+            <option value="diffusion">Diffusion</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <button type="submit">Create and verify passport</button>
+      </fieldset>
+    </form>
+    <p id="passport-status" role="status"></p>
+    <div id="passport-result" hidden>
+      <dl>
+        <dt>Passport ID</dt>
+        <dd><code id="passport-id"></code></dd>
+        <dt>File SHA-256</dt>
+        <dd><code id="artifact-hash"></code></dd>
+      </dl>
+      <button type="button" id="verify-again">Recheck passport identity</button>
+    </div>
+  </section>
+  <section aria-labelledby="summary">
+    <p class="label">Simulated sample</p>
+    <h2 id="summary">Discovery results</h2>
+    <p>Explore how fictional signals identify tools, runtimes, and models.</p>
+    <ul id="findings" aria-labelledby="summary"></ul>
+    <noscript>Enable JavaScript to display the discovery results.</noscript>
+  </section>
 </main>
 </html>
