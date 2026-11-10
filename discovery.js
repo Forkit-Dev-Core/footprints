@@ -51,8 +51,14 @@ function normalise(text) {
   return text.trim().toLowerCase();
 }
 
+// Key on kind and value as a pair, so a colon inside either one cannot
+// shift the boundary and make evidence match a different signal.
+function signalKey(kind, value) {
+  return JSON.stringify([normalise(kind), normalise(value)]);
+}
+
 const knownSignals = new Map(
-  signalCatalog.map(entry => [`${entry.kind}:${normalise(entry.value)}`, entry]),
+  signalCatalog.map(entry => [signalKey(entry.kind, entry.value), entry]),
 );
 
 // ISO 8601 date and time with a zone (Z or an offset). Zoneless or other date
@@ -77,7 +83,7 @@ function discover(evidence) {
   for (const item of evidence) {
     if (typeof item?.kind !== 'string' || typeof item?.value !== 'string') continue;
 
-    const entry = knownSignals.get(`${normalise(item.kind)}:${normalise(item.value)}`);
+    const entry = knownSignals.get(signalKey(item.kind, item.value));
     if (!entry) continue;
 
     let finding = findings.get(entry.result.id);

@@ -30,6 +30,14 @@ test('ignores near matches, the wrong evidence type, and malformed entries', () 
   ]), []);
 });
 
+test('a kind containing a colon cannot match another signal', () => {
+  assert.deepEqual(discover([
+    { kind: 'runtime:ollama', value: 'api/tags' },
+    { kind: 'process:ollama', value: 'exe' },
+    { kind: 'model-file:demo-model.gguf', value: '' },
+  ]), []);
+});
+
 test('deduplicates equivalent runtime signals', () => {
   const result = discover([
     { kind: 'runtime', value: 'ollama:api/tags' },

@@ -25,6 +25,8 @@ Matching rules:
 - `kind` and `value` are trimmed and compared without case, so `' OLLAMA.EXE '` matches `ollama.exe`.
 - Only exact catalog matches count. `ollama-helper.exe` is a near match and is ignored.
 - A value under the wrong `kind` is ignored, for example `{ kind: 'runtime', value: 'ollama.exe' }`.
+- `kind` and `value` are compared as a pair, so `{ kind: 'runtime:ollama', value: 'api/tags' }` does not match `runtime` `ollama:api/tags`.
+- `value` is the bare name as listed in the catalog. Full paths, other spellings such as `ollama` without `.exe`, and look-alike characters are not matched.
 - Items without a string `kind` and `value` are skipped. An `observedAt` that is not an ISO 8601 date and time with a zone, such as `2026-11-10T09:12:00` or `Tue Nov 10 2026`, is ignored. The item still counts.
 
 ## Signal catalog
