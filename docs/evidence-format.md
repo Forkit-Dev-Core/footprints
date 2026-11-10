@@ -15,7 +15,7 @@ The simulated sample in [`discovery.js`](../discovery.js) is fictional. Opened o
 | `client` | string | no | For `mcp-server`: which agent uses it (`claude-desktop`, `claude-code`, `cursor`) |
 | `signer` | string | no | For `process`, `app` and `cli`: who signed the program, checked with macOS `codesign`. Values: a Team ID such as `Q6L2SF6YDW` when the signature is valid; `apple` for Apple's own programs; `unsigned` when there is no publisher identity (unsigned or ad-hoc); `invalid` when a signature exists but doesn't verify; `script` for a script (starts with `#!`), which can't be signed, so nothing is verified. Missing means not checked |
 | `count` | positive integer | no | How many identical items were observed, e.g. 5 sessions of the same process. Defaults to 1 |
-| `observedAt` | string | no | Observation time with an explicit zone, e.g. `2026-11-10T09:12:00Z` or `2026-11-10T10:12:00+01:00`. Missing, invalid and zone-free times are ignored while their evidence still counts. |
+| `observedAt` | string | no | Observation time with an explicit zone, e.g. `2026-11-10T09:12:00Z` or `2026-11-10T10:12:00+01:00`. Results report it in UTC. Missing, invalid (such as `2026-02-30T10:00:00Z`, `Tue Nov 10 2026` or `1`) and zone-free (such as `2026-11-10T09:12:00`) times are ignored while their evidence still counts. |
 | `permissions` | list of strings | no | Permission names that belong to this item; see below |
 | other fields | string | no | Context for explanations, such as `version`, `editor`, `browser`, `profile`, `scope`, `mode`. Matching ignores them. |
 
