@@ -94,6 +94,20 @@ test('tracks first and last observation time and ignores invalid timestamps', ()
   assert.equal(signal.lastObservedAt, '2026-11-10T09:14:00.000Z');
 });
 
+test('accepts ISO 8601 timestamps with a zone and ignores others', () => {
+  const [finding] = discover([
+    { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T10:12:00+01:00' },
+    { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T04:14:00-05:00' },
+    { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T23:59:00' },
+    { kind: 'process', value: 'ollama.exe', observedAt: 'Tue Nov 10 2026' },
+    { kind: 'process', value: 'ollama.exe', observedAt: '1' },
+  ]);
+  const [signal] = finding.signals;
+  assert.equal(signal.occurrences, 5);
+  assert.equal(signal.firstObservedAt, '2026-11-10T09:12:00.000Z');
+  assert.equal(signal.lastObservedAt, '2026-11-10T09:14:00.000Z');
+});
+
 test('results contain only catalog values, never raw input text', () => {
   const canary = 'fictional-canary-7f3a';
   const results = discover([

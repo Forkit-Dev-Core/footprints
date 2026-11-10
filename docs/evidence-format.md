@@ -10,7 +10,7 @@ Each evidence item is a plain object:
 |---|---|---|
 | `kind` | yes | The type of evidence: `process`, `runtime`, or `model-file`. |
 | `value` | yes | The observed value, such as a process name or file name. |
-| `observedAt` | no | When it was seen, as an ISO 8601 timestamp such as `2026-11-10T09:12:00Z`. |
+| `observedAt` | no | When it was seen, as an ISO 8601 date and time with a zone, such as `2026-11-10T09:12:00Z` or `2026-11-10T10:12:00+01:00`. Results store it in UTC. |
 
 ```js
 [
@@ -25,7 +25,7 @@ Matching rules:
 - `kind` and `value` are trimmed and compared without case, so `' OLLAMA.EXE '` matches `ollama.exe`.
 - Only exact catalog matches count. `ollama-helper.exe` is a near match and is ignored.
 - A value under the wrong `kind` is ignored, for example `{ kind: 'runtime', value: 'ollama.exe' }`.
-- Items without a string `kind` and `value` are skipped. Invalid `observedAt` values are ignored, the item still counts.
+- Items without a string `kind` and `value` are skipped. An `observedAt` that is not an ISO 8601 date and time with a zone, such as `2026-11-10T09:12:00` or `Tue Nov 10 2026`, is ignored. The item still counts.
 
 ## Signal catalog
 

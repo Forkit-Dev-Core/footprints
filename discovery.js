@@ -55,8 +55,13 @@ const knownSignals = new Map(
   signalCatalog.map(entry => [`${entry.kind}:${normalise(entry.value)}`, entry]),
 );
 
+// ISO 8601 date and time with a zone (Z or an offset). Zoneless or other date
+// strings are rejected because Date.parse would read them in local time.
+const isoTimestamp =
+  /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?(Z|[+-]([01]\d|2[0-3]):[0-5]\d)$/;
+
 function validTimestamp(value) {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+  return typeof value === 'string' && isoTimestamp.test(value) && !Number.isNaN(Date.parse(value));
 }
 
 // Combine independent signals: 1 minus the product of (1 - weight).
