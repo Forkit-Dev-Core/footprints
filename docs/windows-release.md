@@ -9,13 +9,15 @@ The Windows x64 download is a portable ZIP. It contains the public Footprints ap
 3. Compare the checksum with `Get-FileHash .\Footprints-Windows-x64.zip -Algorithm SHA256`. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd**, open the local page, and create and verify a passport using a synthetic model file.
 4. Create a draft GitHub Release tagged at the reviewed commit. Attach the ZIP and its checksum as separate release assets. Publish after a maintainer has tried the extracted package.
 
-To build locally, use Windows x64, Git, and x64 Python 3.14 with pip.
+To build locally, use Windows and x64 Python 3.14.10.
 
 ```powershell
 python scripts/build_windows.py .\release-files
 ```
 
-The build verifies the embedded runtime against the [Python release checksum](https://www.python.org/downloads/release/python-31410/) and smoke-tests the packaged server and browser assets on loopback.
+The builder and embedded runtime both use Python 3.14.10. The build verifies the embedded runtime against the [Python release checksum](https://www.python.org/downloads/release/python-31410/), checks the hashes in the Windows build and runtime requirement files, and extracts the finished ZIP into a fresh directory. It then checks the browser assets and creates and verifies a passport for the bundled sample on loopback.
+
+When updating a dependency, update its version and artifact hash in the relevant requirement file and run the Windows package workflow. The Forkit Core source archive and its hash are shared with source installs through the root requirement file.
 
 ## Website download count
 
