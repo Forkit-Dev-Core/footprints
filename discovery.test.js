@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
   discover, describePermissions, scanRequest, summarizeFindings, filterFindings, installationLabel, sampleEvidence,
+  catalog, evidenceKinds, describeFinding, describeSignal,
 } = require('./discovery.js');
 
 test('finds distinct tool, runtime, and model results in the sample', () => {
@@ -17,6 +18,8 @@ test('deduplicates equivalent process names', () => {
   ]);
   assert.equal(result.length, 1);
   assert.equal(result[0].evidence, 'ollama.exe');
+  assert.equal(result[0].signals.length, 1);
+  assert.equal(result[0].signals[0].occurrences, 2);
 });
 
 test('ignores near matches, the wrong evidence type, and malformed entries', () => {
@@ -454,4 +457,120 @@ test('an absent or invalid timestamp does not remove its evidence', () => {
   assert.equal(finding.signals[0].occurrences, 2);
   assert.equal(finding.signals[0].firstObservedAt, null);
   assert.equal(finding.signals[0].lastObservedAt, null);
+});
+
+test('deduplicates equivalent runtime signals', () => {
+  const result = discover([
+    { kind: 'runtime', value: 'ollama:api/tags' },
+    { kind: 'Runtime', value: ' OLLAMA:API/TAGS ' },
+  ]);
+  assert.deepEqual(result.map(finding => finding.id), ['ollama-runtime']);
+  assert.equal(result[0].signals[0].occurrences, 2);
+});
+
+test('ignores runtime near matches', () => {
+  assert.deepEqual(discover([
+    { kind: 'runtime', value: 'ollama:api/tags/extra' },
+    { kind: 'runtime', value: 'ollama:api' },
+    { kind: 'process', value: 'ollama:api/tags' },
+  ]), []);
+});
+
+test('deduplicates equivalent model-file signals', () => {
+  const result = discover([
+    { kind: 'model-file', value: 'demo-model.gguf' },
+    { kind: 'model-file', value: 'DEMO-MODEL.GGUF' },
+  ]);
+  assert.deepEqual(result.map(finding => finding.id), ['demo-model']);
+  assert.equal(result[0].signals[0].occurrences, 2);
+});
+
+test('ignores model-file near matches', () => {
+  assert.deepEqual(discover([
+    { kind: 'model-file', value: 'demo-model.gguf.part' },
+    { kind: 'model-file', value: 'other-demo-model.gguf' },
+    { kind: 'model-file', value: 'demo-model' },
+  ]), []);
+});
+
+test('explains each result with its signal, catalog value, and reason', () => {
+  const [finding] = discover([
+    { kind: 'runtime', value: 'ollama:api/tags' },
+    { kind: 'runtime', value: 'ollama:api/tags' },
+  ]);
+  assert.deepEqual(finding.signals, [{
+    kind: 'runtime',
+    explanation: 'API answered at ollama:api/tags',
+    occurrences: 2,
+    firstObservedAt: null,
+    lastObservedAt: null,
+  }]);
+  assert.equal(finding.executionEnv, 'local');
+  assert.deepEqual(finding.accessMethods, ['api']);
+  // Repeats of the same signal raise its occurrences, not the confidence.
+  assert.equal(finding.confidence, 0.9);
+  assert.equal(describeSignal(finding.signals[0]), 'API answered at ollama:api/tags · runtime evidence, seen 2 times');
+  assert.equal(describeFinding(finding), 'Heuristic confidence 90%. Runs on this device, seen through a local API.');
+
+  // Distinct signals combine: 1 - (1 - 0.6) * (1 - 0.6).
+  const [ollama] = discover([{ kind: 'process', value: 'ollama' }, { kind: 'cli', value: 'ollama' }]);
+  assert.equal(ollama.confidence, 0.84);
+  assert.deepEqual(ollama.accessMethods, ['process', 'command']);
+  assert.equal(describeFinding(ollama),
+    'Heuristic confidence 84%. Runs on this device, seen through a running process and an installed command.');
+  assert.equal(describeSignal(ollama.signals[0]), 'Running (1 process) · process evidence, seen once');
+});
+
+test('tracks first and last observation time and ignores invalid timestamps', () => {
+  const [finding] = discover([
+    { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T09:14:00Z' },
+    { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T09:12:00Z' },
+    { kind: 'process', value: 'ollama.exe', observedAt: 'yesterday-ish' },
+  ]);
+  const [signal] = finding.signals;
+  assert.equal(signal.occurrences, 3);
+  assert.equal(signal.firstObservedAt, '2026-11-10T09:12:00.000Z');
+  assert.equal(signal.lastObservedAt, '2026-11-10T09:14:00.000Z');
+});
+
+test('results never contain raw text from unmatched evidence or unused fields', () => {
+  const canary = 'fictional-canary-7f3a';
+  const results = discover([
+    { kind: 'process', value: 'ollama.exe', note: canary },
+    { kind: 'model-file', value: canary },
+    { kind: 'process', value: `ollama.exe ${canary}` },
+    { kind: 'runtime', value: `ollama:api/tags/${canary}` },
+  ]);
+  assert.deepEqual(results.map(result => result.id), ['ollama-tool']);
+  assert.ok(!JSON.stringify(results).includes('canary-7f3a'), 'raw input leaked into results');
+});
+
+test('handles non-array input', () => {
+  assert.deepEqual(discover(undefined), []);
+  assert.deepEqual(discover({ kind: 'process', value: 'ollama.exe' }), []);
+});
+
+test('catalog entries are complete and unique', () => {
+  const entryIds = new Set();
+  const signalKeys = new Set();
+  const lower = field => (Array.isArray(field) ? field.map(lower).sort() : field?.toLowerCase() ?? null);
+  for (const entry of catalog) {
+    for (const field of ['id', 'label', 'kind']) {
+      assert.equal(typeof entry[field], 'string', `${entry.id} is missing ${field}`);
+    }
+    assert.ok(!entryIds.has(entry.id), `duplicate catalog id ${entry.id}`);
+    entryIds.add(entry.id);
+    assert.ok(entry.signals.length > 0, `${entry.id} has no signals`);
+    for (const signal of entry.signals) {
+      assert.equal(typeof signal.explain, 'string', `${entry.id} ${signal.kind} signal has no explanation`);
+      if (!signal.attachOnly) {
+        const { access, weight } = evidenceKinds[signal.kind] ?? {};
+        assert.equal(typeof access, 'string', `${entry.id}: no access method for ${signal.kind}`);
+        assert.ok(weight > 0 && weight < 1, `${entry.id}: ${signal.kind} weight out of range`);
+      }
+      const key = JSON.stringify([signal.kind, signal.value, signal.app, signal.parent, signal.client].map(lower));
+      assert.ok(!signalKeys.has(key), `duplicate catalog signal ${key}`);
+      signalKeys.add(key);
+    }
+  }
 });

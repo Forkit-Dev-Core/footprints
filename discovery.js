@@ -6,6 +6,9 @@
 // app     for a process: bundle ID of the app it lives in (macOS)
 // parent  for a process: bundle ID or name of the process that started it
 // count   how many identical items were observed (default 1)
+//
+// Privacy rule: evidence that matches no signal (including near matches) and
+// fields that discovery does not use are never copied into results.
 const sampleEvidence = [
   { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T09:12:00Z' },
   { kind: 'process', value: 'OLLAMA.EXE', observedAt: '2026-11-10T09:14:00Z' },
@@ -333,6 +336,30 @@ const RUNNING_KINDS = new Set(['process', 'interpreted-process']);
 // Only programs and apps carry a code signature the scan can check.
 const SIGNED_KINDS = new Set(['process', 'app', 'cli']);
 
+// How each kind of evidence is seen, and how much one matching signal of that
+// kind adds to a finding's confidence (0 to 1). Confidence is a heuristic: it
+// grows with independent kinds of evidence. It is not a probability that the
+// tool is what it claims to be, and not a safety rating; publisher
+// verification answers the first question.
+const EVIDENCE_KINDS = {
+  process: { access: 'process', weight: 0.6 },
+  'interpreted-process': { access: 'process', weight: 0.6 },
+  runtime: { access: 'api', weight: 0.9 },
+  'model-file': { access: 'file', weight: 0.5 },
+  app: { access: 'app', weight: 0.6 },
+  cli: { access: 'command', weight: 0.6 },
+  package: { access: 'package', weight: 0.6 },
+  'editor-extension': { access: 'extension', weight: 0.7 },
+  'browser-extension': { access: 'extension', weight: 0.7 },
+  'native-host': { access: 'native-host', weight: 0.5 },
+};
+
+// Combine independent signals: 1 minus the product of (1 - weight).
+function combinedConfidence(weights) {
+  const miss = weights.reduce((product, weight) => product * (1 - weight), 1);
+  return Math.round((1 - miss) * 100) / 100;
+}
+
 // Compare one matched item's signer (from the scan) with the expected publisher.
 function checkSigner(entry, kind, raw) {
   if (!SIGNED_KINDS.has(kind)) return null;
@@ -433,12 +460,13 @@ function discover(evidence, findingsCatalog = catalog) {
         finding = {
           id: entry.id, label: entry.label, kind: entry.kind,
           evidence: raw.value, matches: 0, running: false, groups: new Map(), permissions: new Set(), entry,
-          installations: new Map(), packageVersion: null,
+          installations: new Map(), packageVersion: null, matched: new Set(),
           checks: { confirmed: 0, mismatch: 0, signed: new Set() },
         };
         findings.set(entry.id, finding);
       }
       finding.matches += count;
+      finding.matched.add(signal);
       finding.running ||= RUNNING_KINDS.has(kind);
       if (INSTALL_KINDS.has(kind)) {
         const key = JSON.stringify([kind, item.value, raw.editor, raw.browser, raw.profile]);
@@ -467,7 +495,9 @@ function discover(evidence, findingsCatalog = catalog) {
     if (finding) addToGroup(finding, entry, signal, raw, count, time);
   }
 
-  return [...findings.values()].map(({ groups, permissions, entry, checks, installations, ...finding }) => {
+  return [...findings.values()].map(({ groups, permissions, entry, checks, installations, matched, ...finding }) => {
+    // Repeats of the same signal raise its occurrences, not the confidence.
+    const kinds = [...matched].map(signal => EVIDENCE_KINDS[signal.kind]);
     const signals = [...groups.values()].map(group => ({
       kind: group.signal.kind,
       explanation: explain(group.signal, group),
@@ -481,8 +511,35 @@ function discover(evidence, findingsCatalog = catalog) {
       reasons: signals.map(signal => signal.explanation),
       permissions: [...permissions].sort(),
       verification: verifyPublisher(entry, checks),
+      accessMethods: [...new Set(kinds.filter(Boolean).map(kind => kind.access))],
+      executionEnv: entry.executionEnv ?? 'local',
+      confidence: combinedConfidence(kinds.map(kind => kind?.weight ?? 0)),
     };
   });
+}
+
+const EXECUTION_ENV_TEXT = { local: 'on this device', cloud: 'in the cloud' };
+const ACCESS_TEXT = {
+  process: 'a running process',
+  api: 'a local API',
+  file: 'a file on disk',
+  app: 'an installed app',
+  command: 'an installed command',
+  package: 'an installed package',
+  extension: 'an extension',
+  'native-host': 'a native messaging host',
+};
+
+function describeFinding(finding) {
+  const where = EXECUTION_ENV_TEXT[finding.executionEnv] ?? finding.executionEnv;
+  const how = finding.accessMethods.map(method => ACCESS_TEXT[method] ?? method);
+  const seen = how.length > 1 ? `${how.slice(0, -1).join(', ')} and ${how.at(-1)}` : how[0] ?? 'unknown evidence';
+  return `Heuristic confidence ${Math.round(finding.confidence * 100)}%. Runs ${where}, seen through ${seen}.`;
+}
+
+function describeSignal(signal) {
+  const times = signal.occurrences === 1 ? 'once' : `${signal.occurrences} times`;
+  return `${signal.explanation} · ${signal.kind} evidence, seen ${times}`;
 }
 
 // ── summary and filters for the device view (pure, tested) ────────────────────
@@ -549,7 +606,7 @@ function evidenceReason(signal) {
   const time = iso => el('time', { datetime: iso, title: iso }, new Date(iso).toLocaleString(undefined,
     { dateStyle: 'medium', timeStyle: 'medium' }));
   const { firstObservedAt: first, lastObservedAt: last } = signal;
-  return el('li', {}, signal.explanation, first ? el('span', { class: 'muted small' },
+  return el('li', {}, describeSignal(signal), first ? el('span', { class: 'muted small' },
     ' · Observed ', time(first), first !== last ? [' to ', time(last)] : null) : null);
 }
 
@@ -568,6 +625,7 @@ function findingCard(finding) {
       el('div', { class: 'badges' },
         finding.running ? badge('● Running', 'info') : badge('Installed', 'muted'), verifiedBadge)),
     status === 'not-checked' ? null : el('p', { class: `small ${status === 'unverified' ? 'warn-text' : 'muted'}` }, text),
+    el('p', { class: 'muted small' }, describeFinding(finding)),
     el('ul', { class: 'facts' }, finding.signals.map(evidenceReason)),
     finding.installations.length && isLocalService() ? el('div', { class: 'setups' },
       el('p', { class: 'setups-title' }, 'Passports'),
@@ -667,6 +725,6 @@ if (typeof document !== 'undefined') {
 if (typeof module !== 'undefined') {
   module.exports = {
     discover, describePermissions, scanRequest, summarizeFindings, filterFindings, installationLabel, sampleEvidence,
-    catalog,
+    catalog, evidenceKinds: EVIDENCE_KINDS, describeFinding, describeSignal,
   };
 }
