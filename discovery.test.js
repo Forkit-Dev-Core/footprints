@@ -31,6 +31,14 @@ test('ignores near matches, the wrong evidence type, and malformed entries', () 
   ]), []);
 });
 
+test('a kind containing a colon cannot match another signal', () => {
+  assert.deepEqual(discover([
+    { kind: 'runtime:ollama', value: 'api/tags' },
+    { kind: 'process:ollama', value: 'exe' },
+    { kind: 'model-file:demo-model.gguf', value: '' },
+  ]), []);
+});
+
 const ids = evidence => discover(evidence).map(result => result.id);
 
 test('matches process names the same way on Windows, macOS and Linux', () => {

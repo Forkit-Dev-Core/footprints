@@ -68,6 +68,7 @@ After normalization only exact matches count:
 
 - `ollama-helper.exe` is a near match for `ollama` and is ignored, as are `ollama:api/tags/extra` and `demo-model.gguf.part`.
 - A value under the wrong `kind` is ignored, for example `{ kind: 'runtime', value: 'ollama.exe' }`.
+- `kind` and `value` are compared as separate fields, never joined into one string, so `{ kind: 'runtime:ollama', value: 'api/tags' }` does not match the `runtime` signal `ollama:api/tags`.
 
 ## Catalog entry
 
