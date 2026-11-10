@@ -25,6 +25,18 @@ The browser computes SHA-256 from the selected file. Core receives the hash, fil
 
 You can also open `index.html` directly to try the simulated discovery example. That example uses fictional signals and does not scan your device.
 
+## Scan this device
+
+With `python serve.py` running, the page shows **Scan this device**. It reads app bundle IDs, process names and parents, and editor and browser extension IDs on this device, and matches them with the same rules as the sample. It never reads conversations or history. The command lines of `node` and `python` processes are only compared in memory with known tool names, and the results contain no paths, arguments or user names. Nothing is stored and nothing leaves the device. [docs/proposals/device-discovery.md](docs/proposals/device-discovery.md) lists exactly what is read, and [docs/evidence-format.md](docs/evidence-format.md) explains how evidence becomes a result.
+
+## Track repositories
+
+**Scan repositories** lists the git repositories cloned on this device: where they are, their origin, when they were cloned and last active, and which AI agent files they contain (names, counts and a fingerprint of their contents; the text itself is never stored or shown). Each scan is saved locally, so the next one shows new, changed and missing repositories. See [docs/repositories.md](docs/repositories.md).
+
+## Agent passports
+
+Each agent setup found in a repository (for example its Claude Code files) can get a Forkit Core **agent passport** from the Repositories tab. The passport records a fingerprint of the setup's files. The Passports tab then checks every passport: is the record unchanged, and do the files still match? See [docs/passports.md](docs/passports.md).
+
 ## Run the checks
 
 Use Node.js 24 for the discovery tests. The Python integration test uses Core's real local registry in a temporary directory.
