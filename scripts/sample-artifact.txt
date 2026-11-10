@@ -1,0 +1,1 @@
+Synthetic file for the Footprints passport verification example.

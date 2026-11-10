@@ -7,6 +7,8 @@
 
 Maintainers use Issues to track actionable work, help contributors scope changes, and merge after review and passing checks. For changes to discovery behavior, reviewers look for a representative match and a near match that should be ignored.
 
+For a first-time contributor's workflow run, a maintainer reviews the diff, including any workflow changes, before approving the run in GitHub. Copilot can provide a review when available. Resolve actionable findings and wait for passing checks and a human approval before merging. For packaging changes, also check the Windows package smoke test.
+
 Be respectful and constructive in discussions and reviews. If someone posts private information, flag it for maintainers without quoting it.
 
 ## Contribution license

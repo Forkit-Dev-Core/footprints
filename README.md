@@ -4,6 +4,10 @@ Footprints Discovery is a local UI for exploring AI discovery and working with m
 
 ## Create and verify a model passport
 
+### Windows download
+
+If a Windows build is listed on [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), download **Footprints-Windows-x64.zip**, extract the whole archive, and double-click **Start Footprints.cmd**. The archive includes Python, the application dependencies, and a sample file to try. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
+
 ### Windows quick start
 
 With Python 3.10 or later and Git available in PowerShell, run this from the folder where you want to keep Footprints.
