@@ -105,14 +105,22 @@ class RepoPassportTest(unittest.TestCase):
         self.scan()
         passport_id = self.create()["passport"]["id"]
 
+        def entry():
+            return next(p for p in list_passports(self.registry, self.home)["passports"] if p["id"] == passport_id)
+
         def state():
-            entry = next(p for p in list_passports(self.registry, self.home)["passports"] if p["id"] == passport_id)
-            return entry["setup"], entry["record"]
+            saved = entry()
+            return saved["setup"], saved["record"]
 
         self.assertEqual(state(), ("unchanged", "intact"))
+        self.assertEqual([scan["state"] for scan in entry()["scan_history"]], ["matches"])
         (self.repo / "CLAUDE.md").write_text("edited")
         self.assertEqual(state(), ("changed", "intact"))
-        for name in ("CLAUDE.md", ".mcp.json", ".claude/settings.json"):
+        self.scan()
+        self.assertEqual([scan["state"] for scan in entry()["scan_history"]], ["different", "matches"])
+        (self.repo / ".mcp.json").unlink()
+        self.assertEqual(entry()["files_removed"], [".mcp.json"])
+        for name in ("CLAUDE.md", ".claude/settings.json"):
             (self.repo / name).unlink()
         self.assertEqual(state(), ("files-removed", "intact"))
         shutil.rmtree(self.repo)

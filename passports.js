@@ -63,6 +63,8 @@ function summarizePassports(passports) {
 // ── passports view (browser only) ─────────────────────────────────────────────
 
 let passportDraft = null;
+let selectedPassportId = null;
+let passportLoad = 0;
 
 function hasPublisherSignature(signer) {
   return typeof signer === 'string' && !['unsigned', 'invalid', 'script'].includes(signer);
@@ -161,7 +163,7 @@ function renderPassportForm() {
       container.close();
       showView('passports');
       message.focus();
-      await loadPassports();
+      await loadPassports(result.passport.id);
     } catch (error) {
       if (error.payload?.suggested_version) version.value = error.payload.suggested_version;
       status.textContent = `Passport not created. ${error.message}`;
@@ -173,7 +175,39 @@ function renderPassportForm() {
   container.replaceChildren(form);
 }
 
-function passportCard(passport) {
+function showPassportDetail(passport, focus = true) {
+  selectedPassportId = passport?.id ?? null;
+  const detail = document.getElementById('passport-detail');
+  document.getElementById('passport-overview').hidden = Boolean(passport);
+  document.getElementById('model-passport').hidden = Boolean(passport);
+  detail.hidden = !passport;
+  if (!passport) {
+    detail.replaceChildren();
+    if (focus) document.getElementById('passport-heading').focus();
+    return;
+  }
+  detail.replaceChildren(el('button', { type: 'button', class: 'secondary',
+    onclick: () => showPassportDetail(null) }, 'Back to passports'), passportCard(passport, true));
+  if (focus) detail.querySelector('h3').focus();
+}
+
+function setupEvidence(passport) {
+  const added = passport.files_added ?? [];
+  const removed = passport.files_removed ?? [];
+  const observations = passport.scan_history ?? [];
+  const labels = { matches: 'Matched the registered setup', different: 'Setup differed', 'not-found': 'Setup not found in scan' };
+  return el('section', {},
+    el('h4', {}, 'Setup evidence'),
+    added.length ? el('p', {}, 'Added since registration: ', added.join(', ')) : null,
+    removed.length ? el('p', {}, 'Removed since registration: ', removed.join(', ')) : null,
+    passport.setup === 'changed' && !added.length && !removed.length
+      ? el('p', {}, 'The same files are present, but their fingerprint has changed.') : null,
+    observations.length ? el('ul', { class: 'scan-history' }, observations.map(scan =>
+      el('li', {}, formatDate(scan.at, true), ' · ', labels[scan.state])))
+      : el('p', { class: 'muted' }, 'No repository scan history for this setup yet.'));
+}
+
+function passportCard(passport, detail = false) {
   const repoAgent = passport.kind === 'repo-agent';
   const deviceTool = passport.kind === 'device-tool';
   const title = passport.display_name || (repoAgent ? `${passport.tool_label} · ${passport.repo.split(/[\\/]/).pop()}`
@@ -182,16 +216,26 @@ function passportCard(passport) {
     : deviceTool ? `${passport.surface.replace(/-/g, ' ')} · ${passport.installation}` : passport.description ?? passport.type;
   const newSetupVersion = repoAgent && passport.setup === 'changed' && passport.suggested_version;
   const newToolVersion = deviceTool && passport.install === 'updated' && passport.request;
-  return el('li', { class: `card${needsAttention(passport) ? ' card-warn' : ''}` },
+  const badges = el('div', { class: 'badges' }, passportBadges(passport).map(item => badge(item.text, item.tone, item.title)));
+  const className = `card${needsAttention(passport) ? ' card-warn' : ''}`;
+  if ((repoAgent || deviceTool) && !detail) {
+    return el('li', { class: className },
+      el('div', { class: 'card-head' },
+        el('div', {}, el('h4', {}, title), el('p', { class: 'muted small mono' }, subtitle)), badges),
+      el('button', { type: 'button', class: 'secondary', 'aria-label': `View passport for ${title}`,
+        onclick: () => showPassportDetail(passport) }, 'View passport'));
+  }
+  return el(detail ? 'section' : 'li', { class: className },
     el('div', { class: 'card-head' },
-      el('div', {}, el('h4', {}, title), el('p', { class: 'muted small mono' }, subtitle)),
-      el('div', { class: 'badges' }, passportBadges(passport).map(item => badge(item.text, item.tone, item.title)))),
+      el('div', {}, el(detail ? 'h3' : 'h4', detail ? { tabindex: '-1' } : {}, title),
+        el('p', { class: 'muted small mono' }, subtitle)), badges),
+    detail && deviceTool ? el('p', {}, 'This passport checks whether the installed program still matches its fingerprint.') : null,
     el('dl', { class: 'meta-grid' },
       el('dt', {}, deviceTool && passport.creator_source === 'code-signature' ? 'Publisher' : 'Vouched for by'),
       el('dd', {}, [passport.creator, passport.organization].filter(Boolean).join(', ') || 'unknown',
         deviceTool && passport.creator_source === 'code-signature' ? el('span', { class: 'muted' }, ' (from code signature)') : null),
       el('dt', {}, 'Created'), el('dd', {}, formatDate(passport.created_at, true)),
-      el('dt', {}, 'Passport ID'), el('dd', { class: 'mono', title: passport.id }, `${passport.id.slice(0, 16)}…`),
+      el('dt', {}, 'Passport ID'), el('dd', { class: 'mono', title: passport.id }, detail ? passport.id : `${passport.id.slice(0, 16)}…`),
       (repoAgent || deviceTool) && passport.parent ? [el('dt', {}, 'Lineage'),
         el('dd', { class: 'mono', title: passport.parent }, `follows ${passport.parent.slice(0, 12)}…`)] : null,
       repoAgent && passport.tools.length ? [el('dt', {}, 'MCP servers'), el('dd', {}, passport.tools.join(', '))] : null,
@@ -202,6 +246,7 @@ function passportCard(passport) {
         passport.artifact_files?.length ? [el('dt', {}, 'Files'), el('dd', {}, passport.artifact_files.join(', '))] : null,
         el('dt', {}, 'SHA-256'), el('dd', { class: 'mono' }, passport.artifact_hash))) : null,
     repoAgent ? el('div', { class: 'tags' }, passport.files.map(file => el('span', { class: 'tag' }, file))) : null,
+    repoAgent && detail ? setupEvidence(passport) : null,
     newSetupVersion ? el('button', {
       type: 'button', class: 'secondary',
       onclick: () => startAgentPassport({
@@ -223,11 +268,13 @@ function passportCard(passport) {
     }, `Create passport for v${passport.current_version}`) : null);
 }
 
-async function loadPassports() {
+async function loadPassports(openId = null) {
+  const load = ++passportLoad;
   const status = document.getElementById('passports-status');
   status.textContent = 'Checking passports…';
   try {
     const { passports } = await postJson('/passports/list', {});
+    if (load !== passportLoad) return;
     const totals = summarizePassports(passports);
     renderTiles(document.getElementById('passport-tiles'), [
       { label: 'Tool passports', value: totals.tools },
@@ -240,16 +287,21 @@ async function loadPassports() {
       : passport.kind === 'repo-agent' ? 'Repositories' : 'Models';
     document.getElementById('passport-list').replaceChildren(...(passports.length ? groupedCards(passports, section, passportCard)
       : [el('li', { class: 'empty' }, 'No passports yet.')]));
+    if (openId || selectedPassportId) {
+      const selected = passports.find(passport => passport.id === (openId || selectedPassportId));
+      showPassportDetail(selected, Boolean(openId));
+    }
     status.textContent = `Checked ${passports.length} passport${passports.length === 1 ? '' : 's'} `
       + `at ${formatDate(new Date().toISOString(), true)}.`;
   } catch (error) {
+    if (load !== passportLoad) return;
     status.textContent = `Could not load passports. ${error.message}`;
   }
 }
 
 if (typeof document !== 'undefined' && isLocalService()) {
   document.getElementById('passports-local').hidden = false;
-  document.getElementById('refresh-passports').addEventListener('click', loadPassports);
+  document.getElementById('refresh-passports').addEventListener('click', () => loadPassports());
   document.getElementById('agent-passport').addEventListener('cancel', event => {
     if (event.currentTarget.querySelector('button[type="submit"]')?.disabled) event.preventDefault();
   });

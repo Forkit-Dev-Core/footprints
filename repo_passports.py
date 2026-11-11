@@ -162,14 +162,36 @@ def create_repo_agent_passport(registry_root: Path, history_path: Path, request:
     return {"status": "registered", "passport": passport.to_dict(), "check": registry.verify_passport(passport.id)}
 
 
-def _setup_state(context: dict, artifact_hash, home: Path) -> str:
+def _setup_details(context: dict, artifact_hash, home: Path) -> dict:
     repo = resolve_display_path(str(context.get("repo_path") or ""), home)
     if not context.get("repo_path") or not repo.is_dir() or not (repo / ".git").exists():
-        return "repo-missing"
+        return {"setup": "repo-missing"}
     current = next((setup for setup in agent_setups(repo) if setup["tool"] == context.get("tool")), None)
     if current is None:
-        return "files-removed"
-    return "unchanged" if current["fingerprint"] == artifact_hash else "changed"
+        return {"setup": "files-removed", "files_removed": context.get("files") or []}
+    saved_files = set(context.get("files") or [])
+    current_files = set(current["files"])
+    return {
+        "setup": "unchanged" if current["fingerprint"] == artifact_hash else "changed",
+        "files_added": sorted(current_files - saved_files),
+        "files_removed": sorted(saved_files - current_files),
+    }
+
+
+def _setup_scan_history(scans: list, context: dict, artifact_hash) -> list:
+    observations = []
+    for scan in reversed(scans):
+        if not isinstance(scan, dict) or not isinstance(scan.get("repos"), list) or not scan.get("scanned_at"):
+            continue
+        repo = next((row for row in scan["repos"] if isinstance(row, dict) and row.get("path") == context.get("repo_path")), None)
+        if repo is None:
+            continue
+        setup = next((row for row in repo.get("agents") or [] if isinstance(row, dict) and row.get("tool") == context.get("tool")), None)
+        state = "not-found" if setup is None else "matches" if setup.get("fingerprint") == artifact_hash else "different"
+        observations.append({"at": scan["scanned_at"], "state": state})
+        if len(observations) == 3:
+            break
+    return observations
 
 
 def list_passports(registry_root: Path, home=None, platform=None, tool_state_options=None) -> dict:
@@ -179,6 +201,7 @@ def list_passports(registry_root: Path, home=None, platform=None, tool_state_opt
     home = Path(home) if home is not None else Path.home()
     platform = platform or sys.platform
     registry = _registry(registry_root)
+    scans = None
     passports = []
     for row in registry.list():
         stored = registry.get(row["id"])
@@ -196,12 +219,15 @@ def list_passports(registry_root: Path, home=None, platform=None, tool_state_opt
             "kind": "model", "display_name": context.get("display_name"),
         }
         if context.get("source") == SOURCE and data.get("passport_type") == "agent":
+            if scans is None:
+                scans = load_history(registry_root / "repos-history.json")["scans"]
             item.update(kind="repo-agent", repo=context.get("repo_path"), tool=context.get("tool"),
                         tool_label=context.get("tool_label"), files=context.get("files", []),
                         tools=[tool.get("name") for tool in data.get("tools") or []],
                         parent=data.get("parent_agent_id"),
-                        setup=_setup_state(context, data.get("artifact_hash"), home),
-                        suggested_version=next_version(data["version"]) if _VERSION.match(data["version"]) else None)
+                        scan_history=_setup_scan_history(scans, context, data.get("artifact_hash")),
+                        suggested_version=next_version(data["version"]) if _VERSION.match(data["version"]) else None,
+                        **_setup_details(context, data.get("artifact_hash"), home))
         elif context.get("source") == TOOL_SOURCE and data.get("passport_type") == "agent":
             item.update(kind="device-tool", finding=context.get("finding"), label=context.get("label"),
                         installation=installation_summary(context), surface=data["name"].split("/", 1)[-1],

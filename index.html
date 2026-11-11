@@ -85,6 +85,12 @@
   .cards { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr)); gap: .75rem; align-items: start; }
   .card-groups { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
   .card-group h3 { margin: 0 0 .5rem; }
+  .passport-detail { display: grid; gap: .75rem; margin-bottom: 1rem; }
+  .passport-detail[hidden] { display: none; }
+  .passport-detail > button { justify-self: start; }
+  .passport-detail .card { max-width: 48rem; }
+  .passport-detail .mono { overflow-wrap: anywhere; }
+  .passport-detail .scan-history { margin: .4rem 0 0; padding-left: 1.2rem; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: .7rem; padding: .85rem 1rem; box-shadow: var(--shadow); }
   .card-warn { border-left: 4px solid var(--warn); }
   .card-head { display: flex; flex-wrap: wrap; gap: .35rem .75rem; justify-content: space-between; align-items: flex-start; }
@@ -178,7 +184,7 @@
   <section id="panel-passports" role="tabpanel" aria-labelledby="tab-passports" hidden>
     <div class="panel-head">
       <div>
-        <h2 id="passport-heading">Passports</h2>
+        <h2 id="passport-heading" tabindex="-1">Passports</h2>
         <p class="muted">Forkit Core passports give an AI tool, an agent setup or a model a permanent, checkable identity. Every passport is checked: is the stored record unchanged, and is the same program or agent setup still there?</p>
       </div>
       <button type="button" class="primary" id="refresh-passports">Check passports</button>
@@ -187,8 +193,11 @@
     <div id="passports-local" hidden>
       <p id="registration-result" class="status" role="status" tabindex="-1"></p>
       <p id="passports-status" class="status" role="status"></p>
-      <div id="passport-tiles" class="tiles"></div>
-      <ul id="passport-list" class="card-groups" aria-label="Passports"></ul>
+      <div id="passport-overview">
+        <div id="passport-tiles" class="tiles"></div>
+        <ul id="passport-list" class="card-groups" aria-label="Passports"></ul>
+      </div>
+      <div id="passport-detail" class="passport-detail" hidden></div>
     </div>
     <details id="model-passport">
       <summary>Register a model file</summary>
