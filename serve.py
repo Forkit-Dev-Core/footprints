@@ -2,6 +2,7 @@
 
 import argparse
 import re
+import webbrowser
 from pathlib import Path
 
 import uvicorn
@@ -133,18 +134,38 @@ def create_footprints_app(registry_root: Path, collect_evidence=collect, scan_re
     return app
 
 
+class BrowserServer(uvicorn.Server):
+    """Open Footprints after the server has bound its loopback address."""
+
+    async def startup(self, sockets=None):
+        await super().startup(sockets=sockets)
+        if not self.started:
+            return
+        port = self.config.port or self.servers[0].sockets[0].getsockname()[1]
+        url = f"http://127.0.0.1:{port}/footprints/"
+        try:
+            opened = webbrowser.open(url)
+        except (OSError, webbrowser.Error):
+            opened = False
+        if not opened:
+            print(f"Open {url} in your browser.", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--open-browser", action="store_true", help="Open Footprints after startup.")
     parser.add_argument(
         "--registry-root", type=Path, default=Path.home() / ".forkit" / "footprints"
     )
     options = parser.parse_args()
-    uvicorn.run(
+    config = uvicorn.Config(
         create_footprints_app(options.registry_root.expanduser().resolve()),
         host="127.0.0.1",
         port=options.port,
     )
+    server = BrowserServer(config) if options.open_browser else uvicorn.Server(config)
+    server.run()
 
 
 if __name__ == "__main__":

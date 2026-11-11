@@ -366,7 +366,7 @@ def display_path(path: Path, home: Path) -> str:
         if path == base:
             return "~"
         try:
-            return "~" + os.sep + str(path.relative_to(base))
+            return "~/" + path.relative_to(base).as_posix()
         except ValueError:
             continue
     return str(path)
@@ -398,7 +398,7 @@ def resolve_display_path(path: str, home: Path) -> Path:
     """Inverse of display_path for paths shown as "~/...". """
     if path == "~":
         return home
-    if path.startswith("~" + os.sep):
+    if path.startswith(("~/", "~" + os.sep)):
         return home / path[2:]
     return Path(path)
 

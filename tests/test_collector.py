@@ -295,13 +295,19 @@ class CollectorTest(unittest.TestCase):
         claude = first / "claude"
         claude.write_text("#!/bin/sh\n")
         claude.chmod(0o755)
-        (second / "claude").symlink_to(claude)  # same program linked from a second folder
+        alias = second / "claude"
+        alias.write_text("#!/bin/sh\n")
         (first / "codex").write_text("not executable")
         (first / "copilot").write_text("#!/bin/sh\n")
         (first / "copilot").chmod(0o755)
         real = os.path.realpath(claude)
-        result = self.scan(cli_names=["claude", "codex", "Gemini"], command_dirs_override=[str(first), str(second)],
-                           signer_reader=lambda target: "Q6L2SF6YDW" if target == real else None)
+        realpath = os.path.realpath
+        # The scan targets macOS. Simulate the executable bit and a link on every test host.
+        with mock.patch("collector.os.access", side_effect=lambda path, _mode: Path(path).name != "codex"), \
+             mock.patch("collector.os.path.realpath",
+                        side_effect=lambda path, **kwargs: real if Path(path) == alias else realpath(path, **kwargs)):
+            result = self.scan(cli_names=["claude", "codex", "Gemini"], command_dirs_override=[str(first), str(second)],
+                               signer_reader=lambda target: "Q6L2SF6YDW" if target == real else None)
         self.assertEqual(self.evidence(result, "cli"),
                          [{"kind": "cli", "value": "claude", "signer": "Q6L2SF6YDW", "count": 1}])
         self.assertNotIn(str(self.root), json.dumps(result))

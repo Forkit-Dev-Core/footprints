@@ -59,7 +59,7 @@ class RepoTrackerTest(unittest.TestCase):
         ])
         (repo / "CLAUDE.md").write_text("SECRET-INSTRUCTIONS: never share")
         info = describe_repository(repo, self.home)
-        self.assertEqual(info["path"], os.path.join("~", "Projects", "app"))
+        self.assertEqual(info["path"], "~/Projects/app")
         self.assertEqual(info["origin"], "git.example.com/team/app")
         self.assertEqual(info["how"], "cloned")
         self.assertEqual(info["cloned_at"], "2024-10-27T03:33:20+00:00")
@@ -145,7 +145,7 @@ class RepoTrackerTest(unittest.TestCase):
         (projects / "removed").rmdir()
         make_repo(projects / "new-clone", reflog=[(1731000000, "clone: from x")])
         second = scan_repositories(history, self.home, "darwin", roots=[projects], known=[], now="T2")
-        kept, removed, new = (os.path.join("~", "Projects", name) for name in ("kept", "removed", "new-clone"))
+        kept, removed, new = (f"~/Projects/{name}" for name in ("kept", "removed", "new-clone"))
         self.assertEqual(second["previous_scan_at"], "T1")
         self.assertEqual(second["changes"], {"new": [new], "not_found": [removed],
                                              "changed": [{"path": kept, "fields": ["ai", "agents"]}]})

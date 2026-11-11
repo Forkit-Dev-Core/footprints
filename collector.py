@@ -199,7 +199,7 @@ def signing_target(executable: str):
     match = _BUNDLE_PATH.match(executable or "")
     if match:
         return match.group(1)
-    if (executable or "").startswith("/") and not executable.startswith(SYSTEM_PREFIXES):
+    if executable and (executable.startswith("/") or Path(executable).is_absolute()) and not executable.startswith(SYSTEM_PREFIXES):
         return executable
     return None
 

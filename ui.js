@@ -103,7 +103,7 @@ const isLocalService = () => typeof location !== 'undefined'
 if (typeof document !== 'undefined') {
   const connection = document.getElementById('connection');
   if (isLocalService()) {
-    connection.textContent = 'Local service connected';
+    connection.textContent = 'On this device';
     connection.className = 'badge badge-ok';
   }
   setupTabs();
