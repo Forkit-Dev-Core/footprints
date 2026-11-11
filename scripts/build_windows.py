@@ -169,7 +169,7 @@ def main() -> None:
 
         digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
         checksum = stage / f"{ASSET}.sha256"
-        checksum.write_text(f"{digest}  {ASSET}\n", encoding="ascii")
+        checksum.write_text(f"{digest}  {ASSET}\n", encoding="ascii", newline="\n")
         zip_path.replace(output / ASSET)
         checksum.replace(output / checksum.name)
         print(f"Created and verified a sample passport from the extracted {ASSET}.")
