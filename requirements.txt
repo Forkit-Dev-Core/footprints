@@ -1,1 +1,1 @@
-forkit-core[server] @ git+https://github.com/Forkit-Dev-Core/Forkit_Dev.git@8347f11e5dbe76bc7cace1070197ed6def4936c4
+forkit-core[server] @ https://codeload.github.com/Forkit-Dev-Core/Forkit_Dev/zip/8347f11e5dbe76bc7cace1070197ed6def4936c4#sha256=5dfa23d12e7368c08fba88a2910b237220e182730cb9d8b107dc949c86fdb1df

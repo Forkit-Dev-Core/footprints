@@ -12,7 +12,7 @@ from serve import create_footprints_app
 class FootprintsIntegrationTest(unittest.TestCase):
     def test_local_ui_and_core_share_an_origin_and_registry(self):
         with tempfile.TemporaryDirectory() as directory:
-            registry_root = Path(directory)
+            registry_root = Path(directory) / "Footprints registry café"
             with TestClient(
                 create_footprints_app(registry_root), base_url="http://127.0.0.1"
             ) as client:

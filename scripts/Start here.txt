@@ -1,0 +1,21 @@
+Footprints Discovery for Windows x64
+
+Extract the whole ZIP into a folder you can write to. Open the Footprints
+folder and double-click Start Footprints.cmd. Keep that window open and
+visit http://127.0.0.1:8765/footprints/ in your browser.
+
+Try creating and verifying a model passport with the included sample
+file. Select sample-artifact.txt and enter footprints-sample as the
+model name, 1.0.0 as the version, and Footprints example as the creator.
+Choose Other for both task and architecture. The sample is synthetic.
+
+Footprints hashes your chosen file in the browser. It stores the hash,
+filename, and form metadata on this PC in .forkit\footprints under your
+Windows user folder. The discovery example uses fictional signals.
+
+Press Ctrl+C in the server window to stop Footprints. To remove the
+program, delete the extracted Footprints folder. Your passport registry
+is stored separately.
+
+Source, issue reports and contributions
+https://github.com/Forkit-Dev-Core/footprints

@@ -4,15 +4,37 @@ Footprints Discovery is a local UI for exploring AI discovery and working with m
 
 ## Create and verify a model passport
 
+### Windows download
+
+If a Windows build is listed on [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), download **Footprints-Windows-x64.zip**, extract the whole archive, and double-click **Start Footprints.cmd**. The archive includes Python, the application dependencies, and a sample file to try. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
+
+### Windows quick start
+
+With Python 3.10 or later and Git available in PowerShell, run this from the folder where you want to keep Footprints.
+
+```powershell
+cmd.exe /d /c "git clone --depth 1 https://github.com/Forkit-Dev-Core/footprints.git && cd footprints && python -m venv .venv && .venv\Scripts\python.exe -m pip install -r requirements.txt && .venv\Scripts\python.exe serve.py"
+```
+
+The command creates a local checkout, installs its pinned Forkit Core dependency in a virtual environment, and starts the local server. Press Ctrl+C to stop it. To start it again, open the `footprints` folder and run `.\.venv\Scripts\python.exe serve.py`.
+
+### From an existing checkout
+
 From a checkout of this repository, use Python 3.10 or later and Git to install the pinned Core dependency in a virtual environment.
+
+In Windows PowerShell, call the virtual environment's Python directly.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe serve.py
+```
+
+On macOS or Linux, activate the virtual environment before installing and running Footprints.
 
 ```sh
 python -m venv .venv
-```
-
-Activate it with `.venv\Scripts\Activate.ps1` in PowerShell or `source .venv/bin/activate` on macOS or Linux. Then run:
-
-```sh
+source .venv/bin/activate
 python -m pip install -r requirements.txt
 python serve.py
 ```
@@ -27,7 +49,7 @@ You can also open `index.html` directly to try the simulated discovery example. 
 
 ## Run the checks
 
-Use Node.js 24 for the discovery tests. The Python integration test uses Core's real local registry in a temporary directory.
+Use Node.js 24 for the discovery tests. The Python integration tests use Core's real local registry in a temporary directory. Use the same virtual environment as above. In PowerShell, replace `python` below with `.\.venv\Scripts\python.exe`.
 
 ```sh
 node --test
