@@ -1,10 +1,16 @@
 const form = document.getElementById('passport-form');
 const statusText = document.getElementById('passport-status');
+const empty = document.getElementById('passport-empty');
 const result = document.getElementById('passport-result');
 const passportId = document.getElementById('passport-id');
 const artifactHash = document.getElementById('artifact-hash');
 const verifyAgain = document.getElementById('verify-again');
 const fieldset = form.querySelector('fieldset');
+
+function setStatus(text, state = 'working') {
+  statusText.textContent = text;
+  statusText.dataset.state = state;
+}
 
 async function coreRequest(path, body) {
   const options = { method: 'POST', signal: AbortSignal.timeout(15_000) };
@@ -25,15 +31,15 @@ async function coreRequest(path, body) {
 }
 
 async function verify(id) {
-  statusText.textContent = 'Checking the stored passport with Forkit Core…';
+  setStatus('Checking the stored passport with Forkit Core…');
   try {
     const check = await coreRequest(`/verify/${encodeURIComponent(id)}`);
     if (check.valid !== true || check.stored_id !== id) {
       throw new Error('Core did not confirm this passport ID.');
     }
-    statusText.textContent = 'Passport identity verified by Forkit Core.';
+    setStatus('Passport identity verified by Forkit Core.', 'verified');
   } catch (error) {
-    statusText.textContent = `Passport verification failed. ${error.message}`;
+    setStatus(`Passport verification failed. ${error.message}`, 'error');
   }
 }
 
@@ -50,21 +56,22 @@ async function register(event) {
   const creator = fields.get('creator').trim();
 
   result.hidden = true;
+  empty.hidden = true;
   if (!file.size || file.size > 64 * 1024 * 1024) {
-    statusText.textContent = 'Choose a nonempty model file up to 64 MiB.';
+    setStatus('Choose a nonempty model file up to 64 MiB.', 'error');
     return;
   }
   if (!name || !creator) {
-    statusText.textContent = 'Enter a model name and creator.';
+    setStatus('Enter a model name and creator.', 'error');
     return;
   }
 
   setBusy(true);
-  statusText.textContent = 'Hashing the selected file…';
+    setStatus('Hashing the selected file…');
   try {
     const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
     const hash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
-    statusText.textContent = 'Registering the passport with Forkit Core…';
+    setStatus('Registering the passport with Forkit Core…');
     const passport = await coreRequest('/models', {
       name,
       version: fields.get('version'),
@@ -82,7 +89,7 @@ async function register(event) {
     result.hidden = false;
     await verify(passport.id);
   } catch (error) {
-    statusText.textContent = `Passport creation failed. ${error.message}`;
+    setStatus(`Passport creation failed. ${error.message}`, 'error');
   } finally {
     setBusy(false);
   }

@@ -1,15 +1,36 @@
+import asyncio
 import hashlib
 import json
+import socket
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import uvicorn
 from fastapi.testclient import TestClient
 
-from serve import create_footprints_app
+from serve import BrowserServer, create_footprints_app
 
 
 class FootprintsIntegrationTest(unittest.TestCase):
+    def test_browser_opens_after_the_workspace_port_is_listening(self):
+        with tempfile.TemporaryDirectory() as directory, socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+            app = create_footprints_app(Path(directory))
+            server = BrowserServer(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error"))
+
+            def open_browser(url):
+                self.assertEqual(url, f"http://127.0.0.1:{port}/footprints/")
+                with socket.create_connection(("127.0.0.1", port), timeout=1):
+                    server.should_exit = True
+                return True
+
+            with patch("serve.webbrowser.open", side_effect=open_browser) as browser:
+                asyncio.run(asyncio.wait_for(server.serve(sockets=[listener]), timeout=4))
+                browser.assert_called_once()
+
     def test_local_ui_and_core_share_an_origin_and_registry(self):
         with tempfile.TemporaryDirectory() as directory:
             registry_root = Path(directory) / "Footprints registry café"
@@ -20,8 +41,11 @@ class FootprintsIntegrationTest(unittest.TestCase):
                 self.assertEqual(page.status_code, 200)
                 self.assertIn('id="passport-form"', page.text)
                 self.assertEqual(page.headers["x-frame-options"], "DENY")
-                for script in ("discovery.js", "passport.js"):
-                    self.assertEqual(client.get(f"/footprints/{script}").status_code, 200)
+                self.assertNotIn("Simulated sample", page.text)
+                self.assertEqual(client.get("/footprints/passport.js").status_code, 200)
+                stylesheet = client.get("/footprints/styles.css")
+                self.assertEqual(stylesheet.status_code, 200)
+                self.assertTrue(stylesheet.headers["content-type"].startswith("text/css"))
                 self.assertEqual(client.get("/footprints/serve.py").status_code, 404)
                 self.assertEqual(client.get("http://external.example/footprints/").status_code, 400)
 

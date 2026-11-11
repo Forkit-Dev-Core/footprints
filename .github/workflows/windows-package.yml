@@ -8,8 +8,8 @@ on:
       - 'scripts/**'
       - 'serve.py'
       - 'index.html'
-      - 'discovery.js'
       - 'passport.js'
+      - 'styles.css'
       - 'requirements.txt'
       - 'LICENSE'
 
