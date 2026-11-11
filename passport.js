@@ -5,6 +5,7 @@ const passportId = document.getElementById('passport-id');
 const artifactHash = document.getElementById('artifact-hash');
 const verifyAgain = document.getElementById('verify-again');
 const fieldset = form.querySelector('fieldset');
+let suggestedModelName = '';
 
 async function coreRequest(path, body) {
   const options = { method: 'POST', signal: AbortSignal.timeout(15_000) };
@@ -32,8 +33,10 @@ async function verify(id) {
       throw new Error('Core did not confirm this passport ID.');
     }
     statusText.textContent = 'Passport identity verified by Forkit Core.';
+    return true;
   } catch (error) {
     statusText.textContent = `Passport verification failed. ${error.message}`;
+    return false;
   }
 }
 
@@ -80,9 +83,15 @@ async function register(event) {
     passportId.textContent = passport.id;
     artifactHash.textContent = hash;
     result.hidden = false;
-    await verify(passport.id);
+    const verified = await verify(passport.id);
+    document.getElementById('registration-result').textContent = verified
+      ? `${name} registered. Record verified.`
+      : `${name} registered. Check the verification result below.`;
+    await loadPassports();
+    result.focus();
   } catch (error) {
     statusText.textContent = `Passport creation failed. ${error.message}`;
+    statusText.focus();
   } finally {
     setBusy(false);
   }
@@ -91,6 +100,14 @@ async function register(event) {
 if (location.hostname === '127.0.0.1' && location.pathname === '/footprints/') {
   document.getElementById('local-service-note').hidden = true;
   form.hidden = false;
+  const artifactInput = form.elements.namedItem('artifact');
+  const nameInput = form.elements.namedItem('name');
+  artifactInput.addEventListener('change', () => {
+    const filename = artifactInput.files[0]?.name ?? '';
+    const suggestion = filename.replace(/\.[^.]+$/, '') || filename;
+    if (!nameInput.value.trim() || nameInput.value === suggestedModelName) nameInput.value = suggestion;
+    suggestedModelName = suggestion;
+  });
   form.addEventListener('submit', register);
   verifyAgain.addEventListener('click', async () => {
     setBusy(true);

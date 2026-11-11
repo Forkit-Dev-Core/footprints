@@ -10,6 +10,13 @@ on:
       - 'index.html'
       - 'discovery.js'
       - 'passport.js'
+      - 'passports.js'
+      - 'repositories.js'
+      - 'ui.js'
+      - 'collector.py'
+      - 'repos.py'
+      - 'repo_passports.py'
+      - 'tool_passports.py'
       - 'requirements.txt'
       - 'LICENSE'
 
@@ -31,7 +38,6 @@ jobs:
           architecture: x64
       - run: python scripts/build_windows.py '${{ runner.temp }}/footprints'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.event_name == 'workflow_dispatch'
         with:
           name: footprints-windows-release-files
           path: |

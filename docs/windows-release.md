@@ -12,7 +12,7 @@ The Windows x64 download is a portable ZIP. It contains the public Footprints ap
    gh attestation verify .\Footprints-Windows-x64.zip --repo Forkit-Dev-Core/footprints --signer-workflow Forkit-Dev-Core/footprints/.github/workflows/windows-package.yml --source-ref refs/heads/main --source-digest $releaseCommit --deny-self-hosted-runners
    ```
 
-4. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd**, open the local page, and create and verify a passport using a synthetic model file.
+4. Extract the ZIP into a fresh folder and double-click **Start Footprints.cmd**. Confirm that the browser opens to **Device**. Scan a test device, create a passport from a supported installation, and check it in **Passports**. Use a disposable profile and synthetic fixtures for evidence shared in public.
 5. Create a draft GitHub Release tagged at the commit from step 1. Attach the exact ZIP and checksum from the run as separate release assets. Publish after a maintainer has tried the extracted package.
 
 GitHub provenance links the ZIP to the build run and source commit. Windows publisher signing is separate. If a release requires publisher signing, sign its executable files before packaging so the attestation covers the final ZIP.
@@ -23,7 +23,7 @@ To build locally, use Windows and x64 Python 3.14.10.
 python scripts/build_windows.py .\release-files
 ```
 
-The builder and embedded runtime both use Python 3.14.10. The build verifies the embedded runtime against the [Python release checksum](https://www.python.org/downloads/release/python-31410/), checks the hashes in the Windows build and runtime requirement files, and extracts the finished ZIP into a fresh directory. It then checks the browser assets and creates and verifies a passport for the bundled sample on loopback.
+The builder and embedded runtime both use Python 3.14.10. The build verifies the embedded runtime against the [Python release checksum](https://www.python.org/downloads/release/python-31410/), checks the hashes in the Windows build and runtime requirement files, and extracts the finished ZIP into a fresh directory. It then checks the browser assets, scans for a synthetic Windows command, and creates and verifies tool and model passports on loopback.
 
 When updating a dependency, update its version and artifact hash in the relevant requirement file and run the Windows package workflow. The Forkit Core source archive and its hash are shared with source installs through the root requirement file.
 
