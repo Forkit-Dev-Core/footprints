@@ -1,12 +1,12 @@
-# Footprints Discovery
+# Footprints
 
-Footprints Discovery is a local UI for exploring AI discovery and working with model passports. Footprints collects file evidence and metadata. [Forkit Core](https://github.com/Forkit-Dev-Core/Forkit_Dev) creates the passport, assigns its ID, and verifies its identity.
+Footprints is a local workspace for creating and verifying model passports. Footprints computes a file fingerprint in your browser. [Forkit Core](https://github.com/Forkit-Dev-Core/Forkit_Dev) saves the passport, assigns its ID, and verifies its identity on this device.
 
 ## Create and verify a model passport
 
 ### Windows download
 
-If a Windows build is listed on [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), download **Footprints-Windows-x64.zip**, extract the whole archive, and double-click **Start Footprints.cmd**. The archive includes Python, the application dependencies, and a sample file to try. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
+Download **Footprints-Windows-x64.zip** from [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), extract the whole archive, and double-click **Start Footprints.cmd**. The launcher opens the workspace in your browser. The ZIP includes Footprints, Forkit Core, Python, and a sample file. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
 
 ### Windows quick start
 
@@ -45,7 +45,7 @@ For that example, enter `tiny-random-bert`, `1.0.0`, and `Hugging Face`. Choose 
 
 The browser computes SHA-256 from the selected file. Core receives the hash, filename, and form metadata, and stores a passport in `~/.forkit/footprints`. Use `--registry-root` to choose another local directory. Verification checks that Core can derive the same ID from the stored identity fields. The UI displays the submitted file hash and the returned passport ID.
 
-You can also open `index.html` directly to try the simulated discovery example. That example uses fictional signals and does not scan your device.
+For discovery development, open `discovery.html` from a source checkout. This standalone example uses fictional signals and does not scan your device.
 
 ## Run the checks
 

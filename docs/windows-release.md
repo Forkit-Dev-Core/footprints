@@ -12,7 +12,7 @@ The Windows x64 download is a portable ZIP. It contains the public Footprints ap
    gh attestation verify .\Footprints-Windows-x64.zip --repo Forkit-Dev-Core/footprints --signer-workflow Forkit-Dev-Core/footprints/.github/workflows/windows-package.yml --source-ref refs/heads/main --source-digest $releaseCommit --deny-self-hosted-runners
    ```
 
-4. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd**, open the local page, and create and verify a passport using a synthetic model file.
+4. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd** and confirm that the launcher opens the local workspace in your browser. Create and verify a passport using the included synthetic file.
 5. Create a draft GitHub Release tagged at the commit from step 1. Attach the exact ZIP and checksum from the run as separate release assets. Publish after a maintainer has tried the extracted package.
 
 GitHub provenance links the ZIP to the build run and source commit. Windows publisher signing is separate. If a release requires publisher signing, sign its executable files before packaging so the attestation covers the final ZIP.

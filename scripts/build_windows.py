@@ -121,10 +121,10 @@ def smoke_test(bundle: Path, stage: Path) -> None:
             else:
                 raise RuntimeError("The bundled Footprints page did not become ready.")
 
-            for script in ("discovery.js", "passport.js"):
-                with urllib.request.urlopen(f"{origin}/footprints/{script}", timeout=2) as response:
+            for asset in ("passport.js", "styles.css"):
+                with urllib.request.urlopen(f"{origin}/footprints/{asset}", timeout=2) as response:
                     if not response.read():
-                        raise RuntimeError(f"The bundled {script} is empty.")
+                        raise RuntimeError(f"The bundled {asset} is empty.")
             verify_sample_passport(origin, bundle, registry)
         finally:
             if server.poll() is None:
@@ -149,7 +149,7 @@ def main() -> None:
         app.mkdir(parents=True)
         install_runtime(runtime, stage)
 
-        for filename in ("serve.py", "index.html", "discovery.js", "passport.js"):
+        for filename in ("serve.py", "index.html", "passport.js", "styles.css"):
             shutil.copyfile(ROOT / filename, app / filename)
         shutil.copyfile(ROOT / "LICENSE", bundle / "LICENSE")
         for filename in ("Start Footprints.cmd", "Start here.txt", "sample-artifact.txt"):

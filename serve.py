@@ -2,6 +2,7 @@
 
 import argparse
 import re
+import webbrowser
 from pathlib import Path
 
 import uvicorn
@@ -11,7 +12,7 @@ from forkit.server import ServerSettings, create_app
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 
-UI_PATHS = {"/footprints/", "/footprints/discovery.js", "/footprints/passport.js", "/readyz"}
+UI_PATHS = {"/footprints/", "/footprints/passport.js", "/footprints/styles.css", "/readyz"}
 
 
 async def restrict_core_requests(request: Request, call_next):
@@ -54,29 +55,49 @@ def create_footprints_app(registry_root: Path):
     def footprints_index():
         return FileResponse(ui_root / "index.html", headers={"X-Frame-Options": "DENY"})
 
-    @app.get("/footprints/discovery.js", include_in_schema=False)
-    def discovery_script():
-        return FileResponse(ui_root / "discovery.js", media_type="text/javascript")
-
     @app.get("/footprints/passport.js", include_in_schema=False)
     def passport_script():
         return FileResponse(ui_root / "passport.js", media_type="text/javascript")
 
+    @app.get("/footprints/styles.css", include_in_schema=False)
+    def footprints_styles():
+        return FileResponse(ui_root / "styles.css", media_type="text/css")
+
     return app
+
+
+class BrowserServer(uvicorn.Server):
+    """Open the workspace only after the local server starts listening."""
+
+    async def startup(self, sockets=None):
+        await super().startup(sockets=sockets)
+        if not self.started:
+            return
+        port = self.config.port or self.servers[0].sockets[0].getsockname()[1]
+        url = f"http://127.0.0.1:{port}/footprints/"
+        try:
+            opened = webbrowser.open(url)
+        except (OSError, webbrowser.Error):
+            opened = False
+        if not opened:
+            print(f"Open {url} in your browser.", flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--open-browser", action="store_true", help="Open Footprints after startup.")
     parser.add_argument(
         "--registry-root", type=Path, default=Path.home() / ".forkit" / "footprints"
     )
     options = parser.parse_args()
-    uvicorn.run(
+    config = uvicorn.Config(
         create_footprints_app(options.registry_root.expanduser().resolve()),
         host="127.0.0.1",
         port=options.port,
     )
+    server = BrowserServer(config) if options.open_browser else uvicorn.Server(config)
+    server.run()
 
 
 if __name__ == "__main__":
