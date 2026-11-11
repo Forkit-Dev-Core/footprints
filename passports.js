@@ -196,6 +196,11 @@ function passportCard(passport) {
         el('dd', { class: 'mono', title: passport.parent }, `follows ${passport.parent.slice(0, 12)}…`)] : null,
       repoAgent && passport.tools.length ? [el('dt', {}, 'MCP servers'), el('dd', {}, passport.tools.join(', '))] : null,
       deviceTool ? [el('dt', {}, 'Fingerprint of'), el('dd', {}, passport.fingerprinted.join(', '))] : null),
+    passport.kind === 'model' && passport.artifact_hash ? el('details', {},
+      el('summary', {}, 'Model file details'),
+      el('dl', { class: 'meta-grid' },
+        passport.artifact_files?.length ? [el('dt', {}, 'Files'), el('dd', {}, passport.artifact_files.join(', '))] : null,
+        el('dt', {}, 'SHA-256'), el('dd', { class: 'mono' }, passport.artifact_hash))) : null,
     repoAgent ? el('div', { class: 'tags' }, passport.files.map(file => el('span', { class: 'tag' }, file))) : null,
     newSetupVersion ? el('button', {
       type: 'button', class: 'secondary',

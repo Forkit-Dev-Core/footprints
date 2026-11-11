@@ -214,6 +214,8 @@ def list_passports(registry_root: Path, home=None, platform=None, tool_state_opt
                         **tool_state(data, context, home, platform, **(tool_state_options or {})))
         elif context.get("kind") == "provider-reference":
             item["kind"] = "provider-model"
+        elif data.get("passport_type") == "model":
+            item.update(artifact_hash=data.get("artifact_hash"), artifact_files=data.get("artifact_files") or [])
         passports.append(item)
     order = {"device-tool": 0, "repo-agent": 1, "model": 2, "provider-model": 3}
     passports.sort(key=lambda p: (order.get(p["kind"], 3), p["name"], p.get("created_at") or ""))

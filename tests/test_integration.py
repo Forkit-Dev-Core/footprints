@@ -51,6 +51,12 @@ class FootprintsIntegrationTest(unittest.TestCase):
                 self.assertTrue(verified.json()["valid"])
                 self.assertEqual(verified.json()["stored_id"], passport_id)
 
+                listed = client.post("/passports/list", json={})
+                self.assertEqual(listed.status_code, 200, listed.text)
+                model = next(item for item in listed.json()["passports"] if item["id"] == passport_id)
+                self.assertEqual(model["artifact_hash"], artifact_hash)
+                self.assertEqual(model["artifact_files"], ["model.safetensors"])
+
                 passport["name"] = "changed after registration"
                 stored_path.write_text(json.dumps(passport), encoding="utf-8")
                 rejected = client.post(verify_path)
