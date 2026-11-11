@@ -141,7 +141,8 @@ import uvicorn
 from collector import collect
 from serve import create_footprints_app
 
-app = create_footprints_app(Path(sys.argv[1]), collect_evidence=partial(collect, processes=[], managed_settings=[]))
+collect_fixture = partial(collect, processes=[], managed_settings=Path.home() / "managed-settings.json")
+app = create_footprints_app(Path(sys.argv[1]), collect_evidence=collect_fixture)
 uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[2]))
 """
     command = [
