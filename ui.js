@@ -47,6 +47,21 @@ function badge(text, tone = 'muted', title) {
   return el('span', { class: `badge badge-${tone}`, title }, text);
 }
 
+const INSTALLATION_SECTIONS = {
+  cli: 'Terminal', 'editor-extension': 'Editor', 'browser-extension': 'Browser', app: 'Desktop',
+};
+
+function groupedCards(items, sectionFor, renderCard) {
+  const groups = new Map();
+  for (const item of items) {
+    const section = sectionFor(item);
+    if (!groups.has(section)) groups.set(section, []);
+    groups.get(section).push(renderCard(item));
+  }
+  return [...groups].map(([section, cards]) => el('li', { class: 'card-group' },
+    el('h3', {}, section), el('ul', { class: 'cards' }, cards)));
+}
+
 // tiles: [{ label, value, tone?, hint? }]
 function renderTiles(container, tiles) {
   container.replaceChildren(...tiles.map(({ label, value, tone, hint }) =>

@@ -59,7 +59,7 @@ class RepoPassportTest(unittest.TestCase):
 
     def test_creates_a_passport_with_fingerprint_model_and_mcp_names_only(self):
         self.scan()
-        result = self.create(organization="Example Team")
+        result = self.create(organization="Example Team", display_name="My review agent")
         self.assertEqual(result["status"], "registered")
         self.assertTrue(result["check"]["valid"])
         passport = result["passport"]
@@ -71,7 +71,9 @@ class RepoPassportTest(unittest.TestCase):
         text = json.dumps(passport)
         for private in ("SECRET-INSTRUCTIONS", "SECRET-ENV", "npm test", str(self.home)):
             self.assertNotIn(private, text)
-        models = [p for p in list_passports(self.registry, self.home)["passports"] if p["kind"] == "provider-model"]
+        saved = list_passports(self.registry, self.home)["passports"]
+        self.assertEqual(next(p for p in saved if p["id"] == passport["id"])["display_name"], "My review agent")
+        models = [p for p in saved if p["kind"] == "provider-model"]
         self.assertEqual([(m["name"], m["id"]) for m in models], [("anthropic-claude", passport["model_id"])])
 
     def test_never_overwrites_and_links_new_versions(self):

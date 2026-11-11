@@ -99,12 +99,23 @@ def _passports_named(registry: LocalRegistry, name: str) -> list:
     return [row for row in registry.list(passport_type="agent") if row.get("name") == name]
 
 
+def passport_display_name(request: dict):
+    """A person's label for the passport, separate from its canonical identity."""
+    value = request.get("display_name")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not 0 < len(value.strip()) <= 80 or any(ord(char) < 32 for char in value):
+        raise PassportRequestError("Enter a passport name (up to 80 characters on one line).")
+    return value.strip()
+
+
 def create_repo_agent_passport(registry_root: Path, history_path: Path, request: dict, home=None) -> dict:
     home = Path(home) if home is not None else Path.home()
     path, tool = request.get("repo"), request.get("tool")
     version = str(request.get("version") or "").strip()
     creator = str(request.get("creator") or "").strip()
     organization = str(request.get("organization") or "").strip() or None
+    display_name = passport_display_name(request)
     if not isinstance(path, str) or tool not in AGENT_SETUPS:
         raise PassportRequestError("Choose a repository and one of its agent setups.")
     if not _VERSION.match(version):
@@ -134,7 +145,8 @@ def create_repo_agent_passport(registry_root: Path, history_path: Path, request:
         deployment_env="local", status="active",
         description=f"{setup['label']} setup in {info['path']}",
         metadata={"context": {"source": SOURCE, "repo_path": info["path"], "repo_origin": info.get("origin"),
-                              "tool": tool, "tool_label": setup["label"], "files": setup["files"]}},
+                              "tool": tool, "tool_label": setup["label"], "files": setup["files"],
+                              "display_name": display_name}},
     )
 
     existing = registry.get_agent(passport.id)
@@ -181,7 +193,7 @@ def list_passports(registry_root: Path, home=None, platform=None, tool_state_opt
             "organization": (data.get("creator") or {}).get("organization"),
             "created_at": data.get("created_at"), "description": data.get("description"),
             "record": "intact" if check.get("valid") else check.get("reason", "invalid"),
-            "kind": "model",
+            "kind": "model", "display_name": context.get("display_name"),
         }
         if context.get("source") == SOURCE and data.get("passport_type") == "agent":
             item.update(kind="repo-agent", repo=context.get("repo_path"), tool=context.get("tool"),
@@ -193,6 +205,7 @@ def list_passports(registry_root: Path, home=None, platform=None, tool_state_opt
         elif context.get("source") == TOOL_SOURCE and data.get("passport_type") == "agent":
             item.update(kind="device-tool", finding=context.get("finding"), label=context.get("label"),
                         installation=installation_summary(context), surface=data["name"].split("/", 1)[-1],
+                        installation_kind=context.get("kind"),
                         creator_source=context.get("creator_source"), parent=data.get("parent_agent_id"),
                         fingerprinted=context.get("fingerprinted", []),
                         request={key: context.get(key) for key in ("finding", "label", "tool_kind", "kind",

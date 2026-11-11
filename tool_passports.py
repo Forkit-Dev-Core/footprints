@@ -37,7 +37,7 @@ from forkit.schemas import AgentPassport
 from collector import (_CHROME_EXTENSION_ID, _EXTENSION_FOLDER, CHROMIUM_ROOTS, EDITOR_DIRS, _read_plist,
                        _removed_extension_folders, _safe_listdir, _version_key, app_paths, find_commands,
                        read_publisher, requested_names, signing_target)
-from repo_passports import PassportRequestError, _passports_named, _registry, provider_model
+from repo_passports import PassportRequestError, _passports_named, _registry, passport_display_name, provider_model
 
 SOURCE = "footprints-device-tool"
 KINDS = ("app", "cli", "editor-extension", "browser-extension")
@@ -176,6 +176,7 @@ def create_tool_passport(registry_root: Path, request: dict, home=None, platform
     finding, label = request.get("finding"), str(request.get("label") or "").strip()[:80]
     if not isinstance(finding, str) or not _FINDING.match(finding) or not label:
         raise PassportRequestError("Choose a scanned tool.")
+    display_name = passport_display_name(request)
     installation = validate_installation(request, platform)
     found = locate(installation, home, platform, applications_dirs, command_dirs)
     if found is None:
@@ -210,6 +211,7 @@ def create_tool_passport(registry_root: Path, request: dict, home=None, platform
         description=f"{label}, {surface(installation).replace('-', ' ')}",
         metadata={"context": {
             "source": SOURCE, "finding": finding, "label": label, "tool_kind": request.get("tool_kind"),
+            "display_name": display_name,
             **installation,
             "publisher_team": publisher["signer"] if verified else None,
             "creator_source": "code-signature" if verified else "user",

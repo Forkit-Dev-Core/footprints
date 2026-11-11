@@ -81,8 +81,7 @@ function startToolPassport(draft) {
 function openPassportForm(draft) {
   passportDraft = draft;
   renderPassportForm();
-  showView('passports');
-  document.getElementById('agent-passport').scrollIntoView({ block: 'start' });
+  document.getElementById('agent-passport').showModal();
 }
 
 function readStored(key) {
@@ -110,67 +109,65 @@ async function postJson(url, body) {
 function renderPassportForm() {
   const container = document.getElementById('agent-passport');
   const draft = passportDraft;
-  if (!draft) {
-    container.replaceChildren(el('p', { class: 'muted' },
-      'Choose "Create passport" on a tool in the Device tab, or on an agent setup in the Repositories tab.'));
-    return;
-  }
   const tool = draft.type === 'tool';
   // Only an installation whose own program carries a valid signature gets its publisher from it;
   // e.g. a Chrome extension has no signature even when the tool's other parts do.
   const signed = tool && hasPublisherSignature(draft.installation.signer) && draft.verification?.status === 'confirmed';
   const detectedVersion = tool ? draft.installation.version : null;
   const status = el('p', { class: 'status', role: 'status' });
-  const version = el('input', { name: 'version', value: detectedVersion ?? draft.suggestedVersion ?? draft.version ?? '1.0.0',
+  const sourceName = tool ? draft.label : `${draft.repo.split(/[\\/]/).pop()} · ${draft.label}`;
+  const agentName = el('input', { name: 'display_name', value: draft.displayName ?? sourceName,
+    required: true, maxlength: '80', autofocus: true });
+  const version = el('input', { name: 'version', value: detectedVersion ?? draft.suggestedVersion ?? draft.version ?? (tool ? '' : '1.0.0'),
     required: true, pattern: '[0-9]+\\.[0-9]+(\\.[0-9]+)?', title: 'A version such as 1.0 or 1.0.0',
-    readonly: Boolean(detectedVersion) });
+    placeholder: 'e.g. 1.0.0', readonly: Boolean(detectedVersion) });
   const creator = el('input', { name: 'creator', value: readStored('footprints.creator'), required: !signed, maxlength: '100' });
-  const organization = el('input', { name: 'organization', value: readStored('footprints.organization'), maxlength: '100' });
-  const submit = el('button', { type: 'submit', class: 'primary' }, tool ? 'Create tool passport' : 'Create agent passport');
-  const form = el('form', { class: 'card agent-form' },
-    el('h3', {}, tool ? `${draft.label}: ${installationLabel(draft.installation)}` : `${draft.label} setup`),
-    el('p', { class: 'muted small mono' }, tool ? draft.installation.value : draft.repo),
-    tool
-      ? el('p', { class: 'muted small' }, 'Footprints finds this program on the device and records a fingerprint of it. '
-        + 'The passport later shows whether the same program is still installed.')
-      : [draft.files ? el('p', { class: 'small' }, 'Fingerprinted files: ', draft.files.join(', ')) : null,
-        el('p', { class: 'muted small' },
-          'The passport records a fingerprint of these files, never their text. If they change later, the passport shows it.')],
+  const submit = el('button', { type: 'submit', class: 'primary' }, 'Register passport');
+  const cancel = el('button', { type: 'button', class: 'secondary', onclick: () => container.close() }, 'Cancel');
+  const form = el('form', { class: 'agent-form' },
+    el('h2', { id: 'registration-heading' }, 'Register passport'),
+    el('p', { class: 'muted small' }, tool
+      ? `${INSTALLATION_SECTIONS[draft.installation.kind]} · ${draft.label} · ${installationLabel(draft.installation)}`
+      : `Repository · ${sourceName}`),
+    !tool && draft.files?.length ? el('p', { class: 'small' }, 'Files: ', draft.files.join(', ')) : null,
+    el('p', { class: 'muted small' }, 'Saves a fingerprint on this device.'),
     el('fieldset', {},
+      el('label', {}, 'Agent name', agentName),
       el('label', {}, detectedVersion ? 'Version (detected)' : 'Version', version),
       signed
         ? el('p', { class: 'small' }, el('strong', {}, 'Publisher: '),
-          `${draft.verification.text.replace(/^Signed by /, '')}, taken from the verified code signature.`)
-        : [el('label', {}, tool ? 'Vouched for by (no verified publisher)' : 'Vouched for by', creator),
-          el('label', {}, 'Organization (optional)', organization)],
-      submit),
+          draft.verification.text.replace(/^Signed by /, ''))
+        : el('label', {}, 'Vouched for by', creator)),
+    el('div', { class: 'registration-actions' }, submit, cancel),
     status);
   form.addEventListener('submit', async event => {
     event.preventDefault();
     submit.disabled = true;
-    status.textContent = 'Creating the passport with Forkit Core…';
-    if (!signed) {
-      writeStored('footprints.creator', creator.value.trim());
-      writeStored('footprints.organization', organization.value.trim());
-    }
-    const common = { version: version.value.trim(), creator: creator.value.trim(), organization: organization.value.trim() };
+    cancel.disabled = true;
+    status.textContent = 'Registering…';
+    const common = { version: version.value.trim(), creator: creator.value.trim(), display_name: agentName.value.trim() };
     try {
       const result = tool
         ? await postJson('/passports/tool', {
           finding: draft.finding, label: draft.label, tool_kind: draft.toolKind, ...draft.installation, ...common,
         })
         : await postJson('/passports/repo-agent', { repo: draft.repo, tool: draft.tool, ...common });
-      const { name, version: created, id, creator: by } = result.passport;
-      status.textContent = result.status === 'already-registered'
-        ? `This exact ${tool ? 'program' : 'setup'} already has a passport: ${name} v${created} (${id.slice(0, 12)}…).`
-        : `Created ${name} v${created} for ${by.name} (${id.slice(0, 12)}…). Record check: `
-          + (result.check?.valid ? 'intact.' : 'failed.');
+      if (!signed) writeStored('footprints.creator', common.creator);
+      const name = result.passport.metadata?.context?.display_name || sourceName;
+      const message = document.getElementById('registration-result');
+      message.textContent = result.status === 'already-registered'
+        ? `${name} is already registered.`
+        : `${name} registered. ${result.check?.valid ? 'Record verified.' : 'Check the saved record.'}`;
+      container.close();
+      showView('passports');
+      message.focus();
       await loadPassports();
     } catch (error) {
       if (error.payload?.suggested_version) version.value = error.payload.suggested_version;
       status.textContent = `Passport not created. ${error.message}`;
     } finally {
       submit.disabled = false;
+      cancel.disabled = false;
     }
   });
   container.replaceChildren(form);
@@ -179,15 +176,15 @@ function renderPassportForm() {
 function passportCard(passport) {
   const repoAgent = passport.kind === 'repo-agent';
   const deviceTool = passport.kind === 'device-tool';
-  const title = repoAgent ? `${passport.tool_label} · ${passport.repo.split(/[\\/]/).pop()}`
-    : deviceTool ? passport.label : passport.name;
+  const title = passport.display_name || (repoAgent ? `${passport.tool_label} · ${passport.repo.split(/[\\/]/).pop()}`
+    : deviceTool ? passport.label : passport.name);
   const subtitle = repoAgent ? passport.repo
     : deviceTool ? `${passport.surface.replace(/-/g, ' ')} · ${passport.installation}` : passport.description ?? passport.type;
   const newSetupVersion = repoAgent && passport.setup === 'changed' && passport.suggested_version;
   const newToolVersion = deviceTool && passport.install === 'updated' && passport.request;
   return el('li', { class: `card${needsAttention(passport) ? ' card-warn' : ''}` },
     el('div', { class: 'card-head' },
-      el('div', {}, el('h3', {}, title), el('p', { class: 'muted small mono' }, subtitle)),
+      el('div', {}, el('h4', {}, title), el('p', { class: 'muted small mono' }, subtitle)),
       el('div', { class: 'badges' }, passportBadges(passport).map(item => badge(item.text, item.tone, item.title)))),
     el('dl', { class: 'meta-grid' },
       el('dt', {}, deviceTool && passport.creator_source === 'code-signature' ? 'Publisher' : 'Vouched for by'),
@@ -203,7 +200,8 @@ function passportCard(passport) {
     newSetupVersion ? el('button', {
       type: 'button', class: 'secondary',
       onclick: () => startAgentPassport({
-        repo: passport.repo, tool: passport.tool, label: passport.tool_label, files: null, version: passport.suggested_version,
+        repo: passport.repo, tool: passport.tool, label: passport.tool_label, files: passport.files,
+        version: passport.suggested_version, displayName: passport.display_name,
       }),
     }, `Create v${passport.suggested_version} for the changed setup`) : null,
     newToolVersion ? el('button', {
@@ -211,7 +209,7 @@ function passportCard(passport) {
       onclick: () => {
         const { finding, label, tool_kind: toolKind, ...installation } = passport.request;
         startToolPassport({
-          finding, label, toolKind,
+          finding, label, toolKind, displayName: passport.display_name,
           installation: { ...installation, version: passport.current_version,
             signer: passport.publisher === 'verified' ? 'verified' : undefined },
           verification: passport.publisher === 'verified' ? { status: 'confirmed', text: `Signed by ${passport.creator}` } : null,
@@ -233,7 +231,9 @@ async function loadPassports() {
       { label: 'Need attention', value: totals.attention, tone: totals.attention ? 'warn' : 'ok',
         hint: 'Record altered, program or publisher changed, or agent files changed' },
     ]);
-    document.getElementById('passport-list').replaceChildren(...(passports.length ? passports.map(passportCard)
+    const section = passport => passport.kind === 'device-tool' ? INSTALLATION_SECTIONS[passport.installation_kind] ?? 'Other tools'
+      : passport.kind === 'repo-agent' ? 'Repositories' : 'Models';
+    document.getElementById('passport-list').replaceChildren(...(passports.length ? groupedCards(passports, section, passportCard)
       : [el('li', { class: 'empty' }, 'No passports yet.')]));
     status.textContent = `Checked ${passports.length} passport${passports.length === 1 ? '' : 's'} `
       + `at ${formatDate(new Date().toISOString(), true)}.`;
@@ -245,7 +245,9 @@ async function loadPassports() {
 if (typeof document !== 'undefined' && isLocalService()) {
   document.getElementById('passports-local').hidden = false;
   document.getElementById('refresh-passports').addEventListener('click', loadPassports);
-  renderPassportForm();
+  document.getElementById('agent-passport').addEventListener('cancel', event => {
+    if (event.currentTarget.querySelector('button[type="submit"]')?.disabled) event.preventDefault();
+  });
   loadPassports();
 }
 

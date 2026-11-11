@@ -112,9 +112,10 @@ class ToolPassportTest(unittest.TestCase):
         for missing in ({"version": "1.0.0"}, {"creator": "Jane"}, {"creator": "Jane", "version": "v1.0.0"}):
             with self.assertRaises(PassportRequestError, msg=missing):
                 self.create(**request, **missing)
-        passport = self.create(**request, creator="Jane", version="0.86.1")["passport"]
+        passport = self.create(**request, creator="Jane", version="0.86.1", display_name="My terminal agent")["passport"]
         self.assertEqual((passport["name"], passport["creator"]["name"]), ("aider/cli", "Jane"))
         self.assertEqual(passport["metadata"]["context"]["creator_source"], "user")
+        self.assertEqual(passport["metadata"]["context"]["display_name"], "My terminal agent")
         self.assertEqual(self.state(passport["id"]), ("unchanged", "user"))
         program.write_text("#!/bin/sh\necho replaced\n")
         self.assertEqual(self.state(passport["id"])[0], "changed")

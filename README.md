@@ -8,7 +8,7 @@ Footprints finds supported AI tools and repository agent setups on your device. 
 
 Download **Footprints-Windows-x64.zip** from [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), extract it, and double-click **Start Footprints.cmd**. It opens Footprints in your browser. The ZIP includes Forkit Core, Python, and a sample file. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
 
-In **Device**, select **Scan this device**, then **Create passport** on a supported installation. The **Passports** tab shows your saved records. Windows scans can find supported processes, commands and extensions. Installed-app inventory and publisher signature checks are currently available on macOS.
+In **Device**, select **Scan this device**, then **Create passport** on a supported installation. Review what will be registered, edit the agent name if you like, and select **Register passport**. The **Passports** tab shows your saved records by category. Windows scans can find supported processes, commands and extensions. Installed-app inventory and publisher signature checks are currently available on macOS.
 
 ### Windows quick start
 

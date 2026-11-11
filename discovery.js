@@ -510,6 +510,15 @@ function installationLabel(installation) {
   }[installation.kind]();
 }
 
+function findingSection(finding) {
+  const kind = Object.keys(INSTALLATION_SECTIONS).find(candidate =>
+    finding.installations.some(installation => installation.kind === candidate));
+  return INSTALLATION_SECTIONS[kind] ?? {
+    'Coding agent': 'Terminal', 'AI editor': 'Editor', 'AI app': 'Desktop',
+    'Editor extension': 'Editor', 'Browser extension': 'Browser',
+  }[finding.kind] ?? 'Other tools';
+}
+
 function findingCard(finding) {
   const { lines, other } = describePermissions(finding.permissions);
   const broad = lines.filter(line => line.level === 'high').length;
@@ -521,7 +530,7 @@ function findingCard(finding) {
   }[status]?.() ?? badge('Publisher not checked', 'muted', text);
   return el('li', { class: `card${status === 'unverified' ? ' card-warn' : ''}` },
     el('div', { class: 'card-head' },
-      el('div', {}, el('h3', {}, finding.label), el('p', { class: 'muted small' }, finding.kind)),
+      el('div', {}, el('h4', {}, finding.label), el('p', { class: 'muted small' }, finding.kind)),
       el('div', { class: 'badges' },
         finding.running ? badge('● Running', 'info') : badge('Installed', 'muted'), verifiedBadge)),
     status === 'not-checked' ? null : el('p', { class: `small ${status === 'unverified' ? 'warn-text' : 'muted'}` }, text),
@@ -529,7 +538,7 @@ function findingCard(finding) {
     finding.installations.length && isLocalService() ? el('div', { class: 'setups' },
       el('p', { class: 'setups-title' }, 'Passports'),
       finding.installations.map(installation => el('div', { class: 'setup' },
-        el('div', {}, el('strong', {}, installationLabel(installation)),
+        el('div', {}, el('strong', {}, `${INSTALLATION_SECTIONS[installation.kind]} · ${installationLabel(installation)}`),
           installation.version ? el('p', { class: 'muted small' }, `version ${installation.version}`) : null),
         el('button', {
           type: 'button', class: 'secondary',
@@ -577,7 +586,7 @@ if (typeof document !== 'undefined') {
       { id: 'broad', label: 'Broad access', count: totals.broad },
     ], view.filter, filter => { view.filter = filter; render(); });
     const shown = filterFindings(view.findings, view.filter, view.query);
-    $('findings').replaceChildren(...(shown.length ? shown.map(findingCard)
+    $('findings').replaceChildren(...(shown.length ? groupedCards(shown, findingSection, findingCard)
       : [el('li', { class: 'empty' }, view.findings.length ? 'No tools match this filter.' : 'No AI tools found.')]));
   };
 
