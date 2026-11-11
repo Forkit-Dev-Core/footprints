@@ -4,10 +4,18 @@ The Windows x64 download is a portable ZIP. It contains the public Footprints ap
 
 ## Prepare a release
 
-1. After the change passes checks and is reviewed and merged, open **Actions → Windows package → Run workflow** and select the reviewed ref to release.
-2. Download the `footprints-windows-release-files` artifact from the successful run. It contains `Footprints-Windows-x64.zip` and `Footprints-Windows-x64.zip.sha256`.
-3. Compare the checksum with `Get-FileHash .\Footprints-Windows-x64.zip -Algorithm SHA256`. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd**, open the local page, and create and verify a passport using a synthetic model file.
-4. Create a draft GitHub Release tagged at the reviewed commit. Attach the ZIP and its checksum as separate release assets. Publish after a maintainer has tried the extracted package.
+1. After the change passes checks and is reviewed and merged, open **Actions → Windows package → Run workflow** and select `main`. Record the full commit SHA shown on the run. Wait for both **Windows package smoke test** and **Attest Windows release ZIP** to pass.
+2. Download the `footprints-windows-release-files` artifact from that run. It contains `Footprints-Windows-x64.zip` and `Footprints-Windows-x64.zip.sha256`.
+3. Compare the checksum with `Get-FileHash .\Footprints-Windows-x64.zip -Algorithm SHA256`. Set `$releaseCommit` to the full SHA from step 1 and verify the ZIP's build provenance with the GitHub CLI:
+
+   ```powershell
+   gh attestation verify .\Footprints-Windows-x64.zip --repo Forkit-Dev-Core/footprints --signer-workflow Forkit-Dev-Core/footprints/.github/workflows/windows-package.yml --source-ref refs/heads/main --source-digest $releaseCommit --deny-self-hosted-runners
+   ```
+
+4. Extract the ZIP into a fresh folder. Start it with **Start Footprints.cmd**, open the local page, and create and verify a passport using a synthetic model file.
+5. Create a draft GitHub Release tagged at the commit from step 1. Attach the exact ZIP and checksum from the run as separate release assets. Publish after a maintainer has tried the extracted package.
+
+GitHub provenance links the ZIP to the build run and source commit. Windows publisher signing is separate. If a release requires publisher signing, sign its executable files before packaging so the attestation covers the final ZIP.
 
 To build locally, use Windows and x64 Python 3.14.10.
 
