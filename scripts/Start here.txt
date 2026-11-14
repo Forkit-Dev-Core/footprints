@@ -1,17 +1,23 @@
-Footprints Discovery for Windows x64
+Footprints for Windows x64
 
 Extract the whole ZIP into a folder you can write to. Open the Footprints
-folder and double-click Start Footprints.cmd. Keep that window open and
-visit http://127.0.0.1:8765/footprints/ in your browser.
+folder and double-click Start Footprints.cmd. It opens the Footprints
+window in your browser. Keep the launcher running. If the browser does
+not open, visit http://127.0.0.1:8765/footprints/.
 
-Try creating and verifying a model passport with the included sample
-file. Select sample-artifact.txt and enter footprints-sample as the
+In Device, choose Scan this device. Select Create passport on a
+supported installation to review and register it locally. Use
+Repositories to scan for agent setups and Passports to view and
+check saved records. Forkit Core and Python are included in this ZIP.
+
+To register a file directly, open Passports and expand Register a
+model file. Select sample-artifact.txt and enter footprints-sample as the
 model name, 1.0.0 as the version, and Footprints example as the creator.
 Choose Other for both task and architecture. The sample is synthetic.
 
 Footprints hashes your chosen file in the browser. It stores the hash,
 filename, and form metadata on this PC in .forkit\footprints under your
-Windows user folder. The discovery example uses fictional signals.
+Windows user folder. Scans run when you ask for them.
 
 Press Ctrl+C in the server window to stop Footprints. To remove the
 program, delete the extracted Footprints folder. Your passport registry

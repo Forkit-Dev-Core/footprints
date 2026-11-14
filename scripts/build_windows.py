@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import socket
@@ -21,6 +22,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON_VERSION = "3.14.10"
 PYTHON_SHA256 = "90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159"
 ASSET = "Footprints-Windows-x64.zip"
+PAGE_SCRIPTS = ("ui.js", "discovery.js", "repositories.js", "passports.js", "passport.js")
+APP_FILES = ("serve.py", "index.html", "collector.py", "repos.py", "repo_passports.py", "tool_passports.py", *PAGE_SCRIPTS)
 
 
 def install_runtime(runtime: Path, stage: Path) -> None:
@@ -95,17 +98,57 @@ def verify_sample_passport(origin: str, bundle: Path, registry: Path) -> None:
         raise RuntimeError("The stored passport hash does not match the bundled sample.")
 
 
+def verify_discovered_tool(origin: str) -> None:
+    def post(path, payload):
+        request = urllib.request.Request(
+            origin + path,
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json", "Origin": origin},
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return json.load(response)
+
+    scan = post("/discovery/scan", {"cli": ["claude"]})
+    if not any(item["kind"] == "cli" and item["value"] == "claude" for item in scan["evidence"]):
+        raise RuntimeError("The extracted app did not discover the synthetic Windows command.")
+    created = post("/passports/tool", {
+        "finding": "claude-code", "label": "Claude Code", "tool_kind": "Coding agent",
+        "kind": "cli", "value": "claude", "version": "1.0.0", "creator": "Footprints test",
+    })
+    if created["status"] != "registered" or created["check"]["valid"] is not True:
+        raise RuntimeError("The extracted app did not create and verify the detected tool's passport.")
+
+
 def smoke_test(bundle: Path, stage: Path) -> None:
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
 
     registry = stage / "test registry"
+    home = stage / "test profile"
+    commands = home / "AppData" / "Roaming" / "npm"
+    commands.mkdir(parents=True)
+    (commands / "claude.cmd").write_text("@rem Synthetic discovery fixture; never executed.\n", encoding="ascii")
+    env = {**os.environ, "USERPROFILE": str(home), "PATH": str(commands)}
+    # Use the real app and collector with an empty process list and a disposable profile.
+    smoke_server = """
+import sys
+from functools import partial
+from pathlib import Path
+
+import uvicorn
+
+from collector import collect
+from serve import create_footprints_app
+
+collect_fixture = partial(collect, processes=[], managed_settings=Path.home() / "managed-settings.json")
+app = create_footprints_app(Path(sys.argv[1]), collect_evidence=collect_fixture)
+uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[2]))
+"""
     command = [
-        str(bundle / "runtime" / "python.exe"), "-B", str(bundle / "app" / "serve.py"),
-        "--port", str(port), "--registry-root", str(registry),
+        str(bundle / "runtime" / "python.exe"), "-B", "-c", smoke_server, str(registry), str(port),
     ]
-    with subprocess.Popen(command, cwd=bundle) as server:
+    with subprocess.Popen(command, cwd=bundle, env=env) as server:
         try:
             origin = f"http://127.0.0.1:{port}"
             for _ in range(40):
@@ -113,7 +156,7 @@ def smoke_test(bundle: Path, stage: Path) -> None:
                     raise RuntimeError("The bundled server exited during startup.")
                 try:
                     with urllib.request.urlopen(origin + "/footprints/", timeout=1) as response:
-                        if b'id="passport-form"' in response.read():
+                        if b'id="scan-device"' in response.read():
                             break
                 except OSError:
                     pass
@@ -121,11 +164,12 @@ def smoke_test(bundle: Path, stage: Path) -> None:
             else:
                 raise RuntimeError("The bundled Footprints page did not become ready.")
 
-            for script in ("discovery.js", "passport.js"):
+            for script in PAGE_SCRIPTS:
                 with urllib.request.urlopen(f"{origin}/footprints/{script}", timeout=2) as response:
                     if not response.read():
                         raise RuntimeError(f"The bundled {script} is empty.")
             verify_sample_passport(origin, bundle, registry)
+            verify_discovered_tool(origin)
         finally:
             if server.poll() is None:
                 server.terminate()
@@ -149,7 +193,7 @@ def main() -> None:
         app.mkdir(parents=True)
         install_runtime(runtime, stage)
 
-        for filename in ("serve.py", "index.html", "discovery.js", "passport.js"):
+        for filename in APP_FILES:
             shutil.copyfile(ROOT / filename, app / filename)
         shutil.copyfile(ROOT / "LICENSE", bundle / "LICENSE")
         for filename in ("Start Footprints.cmd", "Start here.txt", "sample-artifact.txt"):
@@ -172,7 +216,7 @@ def main() -> None:
         checksum.write_text(f"{digest}  {ASSET}\n", encoding="ascii", newline="\n")
         zip_path.replace(output / ASSET)
         checksum.replace(output / checksum.name)
-        print(f"Created and verified a sample passport from the extracted {ASSET}.")
+        print(f"Discovered a Windows command and verified tool and model passports from the extracted {ASSET}.")
 
 
 if __name__ == "__main__":
