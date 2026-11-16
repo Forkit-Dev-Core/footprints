@@ -8,7 +8,7 @@ Footprints is a local app for AI discovery, evidence insights, and passport work
 
 Download **Footprints-Windows-x64.zip** from [GitHub Releases](https://github.com/Forkit-Dev-Core/footprints/releases), extract it, and double-click **Start Footprints.cmd**. It opens Footprints in your browser. The ZIP includes Forkit Core, Python, and a sample file. See [Windows preview releases](docs/windows-release.md) for the maintainer workflow.
 
-These device and repository discovery instructions describe this source branch. The existing Windows preview uses simulated discovery. When a Windows ZIP includes live discovery, open **Device**, select **Scan this device**, then choose **Create passport** on a supported installation. Windows scans can find supported processes, commands, and extensions. Installed-app inventory and publisher signature checks are currently available on macOS.
+[Windows preview v0.1.0-preview.2](https://github.com/Forkit-Dev-Core/footprints/releases/tag/v0.1.0-preview.2) includes live discovery. Open **Device**, select **Scan this device**, then choose **Create passport** on a supported installation. Windows scans can find supported processes, commands, and extensions. Installed-app inventory and publisher signature checks are currently available on macOS.
 
 ### Windows quick start
 
@@ -82,3 +82,7 @@ Use the [community page](docs/community.md) to share demos, writeups, workshop r
 ## License
 
 This project is available under the [MIT License](LICENSE). Forkit Core is a separate dependency under its [Apache 2.0 license](https://github.com/Forkit-Dev-Core/Forkit_Dev/blob/main/LICENSE).
+
+## Community policies
+
+See our [community direction and roadmap](GOVERNANCE.md), [code of conduct](CODE_OF_CONDUCT.md), and [private security reporting policy](SECURITY.md).
