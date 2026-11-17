@@ -407,3 +407,27 @@ test('finds AI apps by bundle ID, not by display name', () => {
   assert.deepEqual(ids([{ kind: 'app', value: 'ai.perplexity.macv3' }]), ['perplexity']);
   assert.deepEqual(ids([{ kind: 'app', value: 'Cursor' }]), []);
 });
+
+
+test('deduplicates runtime and model-file findings while retaining evidence counts', () => {
+  const fictionalCatalog = [
+    { id: 'example-runtime', label: 'Example runtime', kind: 'Runtime',
+      signals: [{ kind: 'runtime', value: 'example:api/models' }] },
+    { id: 'example-model', label: 'Example model', kind: 'Model file',
+      signals: [{ kind: 'model-file', value: 'fictional-model.gguf' }] },
+  ];
+  const evidence = [
+    { kind: 'runtime', value: 'example:api/models' },
+    { kind: 'model-file', value: 'fictional-model.gguf' },
+    { kind: 'runtime', value: 'example:api/models' },
+    { kind: 'model-file', value: 'fictional-model.gguf' },
+    { kind: 'runtime', value: 'example:api/models-extra' },
+    { kind: 'model-file', value: 'fictional-model.gguf.backup' },
+  ];
+  const findings = discover(evidence, fictionalCatalog);
+  assert.deepEqual(findings.map(({ id, matches }) => ({ id, matches })), [
+    { id: 'example-runtime', matches: 2 },
+    { id: 'example-model', matches: 2 },
+  ]);
+  for (const finding of findings) assert.equal(finding.reasons.length, 1);
+});
