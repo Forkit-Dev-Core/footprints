@@ -7,11 +7,11 @@
 // parent  for a process: bundle ID or name of the process that started it
 // count   how many identical items were observed (default 1)
 const sampleEvidence = [
-  { kind: 'process', value: 'ollama.exe' },
-  { kind: 'process', value: 'OLLAMA.EXE' },
+  { kind: 'process', value: 'ollama.exe', observedAt: '2026-11-10T09:12:00Z' },
+  { kind: 'process', value: 'OLLAMA.EXE', observedAt: '2026-11-10T09:14:00Z' },
   { kind: 'process', value: 'ollama-helper.exe' },
-  { kind: 'runtime', value: 'ollama:api/tags' },
-  { kind: 'model-file', value: 'demo-model.gguf' },
+  { kind: 'runtime', value: 'ollama:api/tags', observedAt: '2026-11-10T09:15:00Z' },
+  { kind: 'model-file', value: 'demo-model.gguf', observedAt: '2026-11-10T09:16:00Z' },
 ];
 
 const SHELLS = ['zsh', 'bash', 'fish', 'sh', 'pwsh', 'powershell', 'cmd', 'tmux'];
@@ -288,6 +288,18 @@ function fieldMatches(expected, actual) {
   return actual !== null && options.some(option => normalize(option) === actual);
 }
 
+const zonedTimestamp =
+  /^(\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
+function observationTime(value) {
+  const match = typeof value === 'string' && zonedTimestamp.exec(value);
+  if (!match || match[0] !== value) return null;
+  const day = new Date(`${match[1]}T00:00:00Z`);
+  const time = Date.parse(value);
+  // JavaScript can normalize an invalid calendar date such as February 30.
+  return Number.isFinite(time) && day.toISOString().startsWith(match[1]) ? time : null;
+}
+
 function signalMatches(signal, item) {
   return signal.kind === item.kind
     && fieldMatches(signal.value, item.value)
@@ -359,15 +371,19 @@ function verifyPublisher(entry, checks) {
 
 // Group by signal (and its groupBy field) so "5 sessions" and "2 profiles"
 // become one line each. Items that fail the signer check get their own line.
-function addToGroup(finding, entry, signal, raw, count, problem = null) {
+function addToGroup(finding, entry, signal, raw, count, time, problem = null) {
   const by = signal.groupBy ? String(raw[signal.groupBy] ?? '') : '';
   const key = `${entry.signals.indexOf(signal)}|${by}|${problem ?? ''}`;
   let group = finding.groups.get(key);
   if (!group) {
-    group = { signal, count: 0, fields: {}, problem };
+    group = { signal, count: 0, fields: {}, problem, first: null, last: null };
     finding.groups.set(key, group);
   }
   group.count += count;
+  if (time !== null) {
+    group.first = Math.min(group.first ?? time, time);
+    group.last = Math.max(group.last ?? time, time);
+  }
   for (const field of EXPLAIN_FIELDS) {
     if (typeof raw[field] !== 'string' || !raw[field].trim()) continue;
     (group.fields[field] ??= new Set()).add(displayName(raw[field].trim()));
@@ -402,12 +418,13 @@ function discover(evidence, findingsCatalog = catalog) {
     };
     if (!item.value) continue;
     const count = Number.isInteger(raw.count) && raw.count > 0 ? raw.count : 1;
+    const time = observationTime(raw.observedAt);
 
     for (const entry of findingsCatalog) {
       const signal = entry.signals.find(candidate => signalMatches(candidate, item));
       if (!signal) continue;
       if (signal.attachOnly) {
-        attachments.push({ entry, signal, raw, count });
+        attachments.push({ entry, signal, raw, count, time });
         continue;
       }
 
@@ -437,7 +454,7 @@ function discover(evidence, findingsCatalog = catalog) {
       if (check?.status === 'confirmed') finding.checks.confirmed += count;
       if (check?.status === 'mismatch') finding.checks.mismatch += count;
       if (check?.status === 'signed') finding.checks.signed.add(check.signer);
-      addToGroup(finding, entry, signal, raw, count,
+      addToGroup(finding, entry, signal, raw, count, time,
         check?.status === 'mismatch' ? signerProblem(entry, check.signer) : null);
       for (const permission of Array.isArray(raw.permissions) ? raw.permissions : []) {
         if (typeof permission === 'string') finding.permissions.add(permission);
@@ -445,18 +462,27 @@ function discover(evidence, findingsCatalog = catalog) {
     }
   }
 
-  for (const { entry, signal, raw, count } of attachments) {
+  for (const { entry, signal, raw, count, time } of attachments) {
     const finding = findings.get(entry.id);
-    if (finding) addToGroup(finding, entry, signal, raw, count);
+    if (finding) addToGroup(finding, entry, signal, raw, count, time);
   }
 
-  return [...findings.values()].map(({ groups, permissions, entry, checks, installations, ...finding }) => ({
-    ...finding,
-    installations: [...installations.values()],
-    reasons: [...groups.values()].map(group => explain(group.signal, group)),
-    permissions: [...permissions].sort(),
-    verification: verifyPublisher(entry, checks),
-  }));
+  return [...findings.values()].map(({ groups, permissions, entry, checks, installations, ...finding }) => {
+    const signals = [...groups.values()].map(group => ({
+      kind: group.signal.kind,
+      explanation: explain(group.signal, group),
+      occurrences: group.count,
+      firstObservedAt: group.first === null ? null : new Date(group.first).toISOString(),
+      lastObservedAt: group.last === null ? null : new Date(group.last).toISOString(),
+    }));
+    return {
+      ...finding, signals,
+      installations: [...installations.values()],
+      reasons: signals.map(signal => signal.explanation),
+      permissions: [...permissions].sort(),
+      verification: verifyPublisher(entry, checks),
+    };
+  });
 }
 
 // ── summary and filters for the device view (pure, tested) ────────────────────
@@ -519,6 +545,14 @@ function findingSection(finding) {
   }[finding.kind] ?? 'Other tools';
 }
 
+function evidenceReason(signal) {
+  const time = iso => el('time', { datetime: iso, title: iso }, new Date(iso).toLocaleString(undefined,
+    { dateStyle: 'medium', timeStyle: 'medium' }));
+  const { firstObservedAt: first, lastObservedAt: last } = signal;
+  return el('li', {}, signal.explanation, first ? el('span', { class: 'muted small' },
+    ' · Observed ', time(first), first !== last ? [' to ', time(last)] : null) : null);
+}
+
 function findingCard(finding) {
   const { lines, other } = describePermissions(finding.permissions);
   const broad = lines.filter(line => line.level === 'high').length;
@@ -534,7 +568,7 @@ function findingCard(finding) {
       el('div', { class: 'badges' },
         finding.running ? badge('● Running', 'info') : badge('Installed', 'muted'), verifiedBadge)),
     status === 'not-checked' ? null : el('p', { class: `small ${status === 'unverified' ? 'warn-text' : 'muted'}` }, text),
-    el('ul', { class: 'facts' }, finding.reasons.map(reason => el('li', {}, reason))),
+    el('ul', { class: 'facts' }, finding.signals.map(evidenceReason)),
     finding.installations.length && isLocalService() ? el('div', { class: 'setups' },
       el('p', { class: 'setups-title' }, 'Passports'),
       finding.installations.map(installation => el('div', { class: 'setup' },
@@ -612,10 +646,11 @@ if (typeof document !== 'undefined') {
         if (!response.ok) throw new Error(`Footprints returned HTTP ${response.status}.`);
         const scan = await response.json();
         const seconds = ((performance.now() - started) / 1000).toFixed(1);
-        view.findings = discover(scan.evidence);
+        const scanCompletedAt = new Date().toISOString();
+        view.findings = discover(scan.evidence.map(item => ({ observedAt: scanCompletedAt, ...item })));
         view.waiting = false;
         $('discovery-source').hidden = true;
-        $('scan-status').textContent = `Scanned ${formatDate(new Date().toISOString(), true)} · `
+        $('scan-status').textContent = `Scanned ${formatDate(scanCompletedAt, true)} · `
           + `${scan.evidence.length} identifiers in ${seconds} s · nothing left this device`;
         $('device-notes').replaceChildren(...Object.entries(scan.not_collected || {}).map(([what, why]) =>
           el('p', { class: 'note' }, el('strong', {}, `${NOT_COLLECTED_NAMES[what] ?? what} not checked: `), why)));

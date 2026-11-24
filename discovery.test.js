@@ -431,3 +431,27 @@ test('deduplicates runtime and model-file findings while retaining evidence coun
   ]);
   for (const finding of findings) assert.equal(finding.reasons.length, 1);
 });
+
+test('keeps a UTC observation range for each matched evidence group', () => {
+  const [finding] = discover([
+    { kind: 'process', value: 'ollama', observedAt: '2026-11-10T04:14:00-05:00' },
+    { kind: 'process', value: 'ollama', observedAt: '2026-11-10T10:12:00+01:00', count: 2 },
+    { kind: 'process', value: 'ollama', observedAt: '2026-11-10T23:59:00' },
+    { kind: 'process', value: 'ollama', observedAt: '2026-11-10T23:59:00Z\n' },
+    { kind: 'process', value: 'ollama', observedAt: '2026-02-30T10:00:00Z' },
+    { kind: 'process', value: 'ollama-helper', observedAt: '2026-11-11T00:00:00Z' },
+  ]);
+  assert.equal(finding.matches, 6);
+  assert.deepEqual(finding.signals, [{
+    kind: 'process', explanation: finding.reasons[0], occurrences: 6,
+    firstObservedAt: '2026-11-10T09:12:00.000Z', lastObservedAt: '2026-11-10T09:14:00.000Z',
+  }]);
+});
+
+test('an absent or invalid timestamp does not remove its evidence', () => {
+  const [finding] = discover([{ kind: 'process', value: 'ollama' },
+    { kind: 'process', value: 'ollama', observedAt: 'Tue Nov 10 2026' }]);
+  assert.equal(finding.signals[0].occurrences, 2);
+  assert.equal(finding.signals[0].firstObservedAt, null);
+  assert.equal(finding.signals[0].lastObservedAt, null);
+});
