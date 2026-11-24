@@ -77,6 +77,8 @@ python -m unittest discover -s tests
 
 Pick a [good first issue](https://github.com/Forkit-Dev-Core/footprints/labels/good%20first%20issue), report a problem in [Issues](https://github.com/Forkit-Dev-Core/footprints/issues), or suggest an idea in [Discussions](https://github.com/Forkit-Dev-Core/footprints/discussions). You can contribute code, tests, documentation, or examples. The [contributor guide](CONTRIBUTING.md) explains how to get a change reviewed.
 
+Read the [contribution story](CONTRIBUTIONS.md) to see what people built and where their work shipped.
+
 Use the [community page](docs/community.md) to share demos, writeups, workshop resources, and lessons others can build on.
 
 ## License
