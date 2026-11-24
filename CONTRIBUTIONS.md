@@ -15,7 +15,7 @@ Forkit Core began with [Syed Amir Hamza](https://github.com/syedofc) and [Arpita
 | Contributor | What they made possible |
 | --- | --- |
 | [Sneha P Pratap](https://github.com/snehaapratap) | Made deep lineage chains traversable without hitting Python’s recursion limit. [Core #17](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/17) |
-| [Harsh Raj Singhania](https://github.com/HarshRajSinghania) | Fixed Passport verification so valid uppercase artifact hashes are accepted and malformed hashes are rejected. [Core #18](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/18) |
+| [Harsh Raj Singhania](https://github.com/HarshRajSinghania) | Fixed Passport verification so valid uppercase artifact hashes are accepted and malformed hashes are rejected. [Uppercase hash fix](https://github.com/Forkit-Dev-Core/Forkit_Dev/commit/e8e476187193b09e80737dcd4c85bfa8c2624f86) · [Malformed hash fix](https://github.com/Forkit-Dev-Core/Forkit_Dev/commit/c01ce82f0a7927e8ae8a793ad78338f89cf24718) |
 | [Doomguy-BFG9000](https://github.com/Doomguy-BFG9000) | Tightened version validation while keeping legacy records inspectable, and made lineage reject invalid graphs and return clearer CLI results. [Core #20](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/20) · [#21](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/21) · [#22](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/22) · [#23](https://github.com/Forkit-Dev-Core/Forkit_Dev/pull/23) |
 | [Aditya Singh Bakawat (CyberKun)](https://github.com/CyberKun) | Added regression tests so duplicate runtime and model-file signals produce one finding apiece while retaining the evidence count. [Footprints #15](https://github.com/Forkit-Dev-Core/footprints/pull/15) |
 
