@@ -13,6 +13,7 @@ Discovery turns a list of **evidence items** into **findings**. An evidence item
 | `client` | string | no | For `mcp-server`: which agent uses it (`claude-desktop`, `claude-code`, `cursor`) |
 | `signer` | string | no | For `process`, `app` and `cli`: who signed the program, checked with macOS `codesign`. Values: a Team ID such as `Q6L2SF6YDW` when the signature is valid; `apple` for Apple's own programs; `unsigned` when there is no publisher identity (unsigned or ad-hoc); `invalid` when a signature exists but doesn't verify; `script` for a script (starts with `#!`), which can't be signed, so nothing is verified. Missing means not checked |
 | `count` | positive integer | no | How many identical items were observed, e.g. 5 sessions of the same process. Defaults to 1 |
+| `observedAt` | string | no | Observation time with an explicit zone, e.g. `2026-11-10T09:12:00Z` or `2026-11-10T10:12:00+01:00`. Missing, invalid and zone-free times are ignored while their evidence still counts. |
 | `permissions` | list of strings | no | Permission names that belong to this item; see below |
 | other fields | string | no | Context for explanations, such as `version`, `editor`, `browser`, `profile`, `scope`, `mode`. Matching ignores them. |
 
@@ -90,8 +91,11 @@ Each finding is reported once:
 | `evidence` | The first matching evidence value, as observed |
 | `matches` | Total of the `count` of every matching item |
 | `reasons` | One explanation per matching signal, in the order first seen |
+| `signals` | The same explanation groups, with their evidence `kind`, `explanation`, total `occurrences`, and `firstObservedAt` and `lastObservedAt` in UTC. Both times are `null` if the group has no valid timestamp. |
 | `permissions` | Sorted permission names from all matching items |
 | `verification` | `{ status, text }`: whether the matching programs come from the expected publisher; see below |
+
+For a live device scan, Footprints assigns the scan completion time to items without their own timestamp. The range describes only evidence in the current result. It does not indicate when a tool was installed or track observations across separate scans.
 
 ### Publisher verification
 
