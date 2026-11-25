@@ -13,7 +13,7 @@ Share only material you have permission to publish. Use the simulated discovery 
 
 ## Try the Windows community preview
 
-[Release notes](https://github.com/Forkit-Dev-Core/footprints/releases/tag/v0.1.0-preview.2) · [Windows x64 ZIP](https://github.com/Forkit-Dev-Core/footprints/releases/download/v0.1.0-preview.2/Footprints-Windows-x64.zip) · [SHA-256 file](https://github.com/Forkit-Dev-Core/footprints/releases/download/v0.1.0-preview.2/Footprints-Windows-x64.zip.sha256)
+[Release notes](https://github.com/Forkit-Dev-Core/footprints/releases/tag/v0.1.0-preview.3) · [Windows x64 ZIP](https://github.com/Forkit-Dev-Core/footprints/releases/download/v0.1.0-preview.3/Footprints-Windows-x64.zip) · [SHA-256 file](https://github.com/Forkit-Dev-Core/footprints/releases/download/v0.1.0-preview.3/Footprints-Windows-x64.zip.sha256)
 
 Extract the whole ZIP and double-click `Start Footprints.cmd` without elevation. Keep the launcher window open. Try scanning a supported installation, creating its passport, and rechecking the record ID and installation fingerprint. This is a preview; read the release notes for coverage and limitations.
 
