@@ -23,6 +23,12 @@ on:
 permissions:
   contents: read
 
+
+# One run per branch: a newer push cancels the older run (saves Actions minutes).
+concurrency:
+  group: windows-package-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   package:
     name: Windows package smoke test
