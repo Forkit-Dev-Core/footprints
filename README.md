@@ -47,7 +47,7 @@ For that example, enter `footprints-sample`, `1.0.0`, and `Footprints example`. 
 
 The browser computes SHA-256 from the selected file. Core receives the hash, filename, and form metadata, and stores a passport in `~/.forkit/footprints`. Use `--registry-root` to choose another local directory. Verification checks that Core can derive the same ID from the stored identity fields. The UI displays the submitted file hash and the returned passport ID.
 
-You can also open `index.html` directly to try the simulated discovery example. That example uses fictional signals and does not scan your device.
+You can also open `index.html` directly to try the simulated discovery example. That example uses fictional signals and does not scan your device. Each result lists the signals behind it, a short reason for each, and a heuristic confidence score. The [evidence format](docs/evidence-format.md) describes the input, the signal catalog, and the results.
 
 Use the simulated page and a registry containing only synthetic passports for screenshots and reports. Print hides the live workspace. See [what Footprints stores locally](docs/passports.md#local-storage-and-sharing).
 
